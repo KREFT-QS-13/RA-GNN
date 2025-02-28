@@ -1,3 +1,7 @@
+"""
+Module for performing Density Matrix Renormalization Group (DMRG) calculations on quantum spin systems,
+specifically focusing on the Transverse Field Ising (TFI) model with position-dependent interactions.
+"""
 module DMRG
 
 include("File_utils.jl")
@@ -15,10 +19,36 @@ using .Latul
 
 export HTFI, TFI_DMRG, main_Mg_NN_NNN_δ, main_Mg_NN_NNN_δ_smpl
 
+"""
+    rescaled_rand(x, y)
+
+Generate a random number uniformly distributed between x and y.
+Used for creating random perturbations in atomic positions.
+
+# Arguments
+- `x`: Lower bound of the range
+- `y`: Upper bound of the range
+
+# Returns
+- A random float between x and y
+"""
 function rescaled_rand(x, y)
     return x + (y - x) * rand()
 end
   
+"""
+    Base.:+(a::Tuple{T, T}, b::Tuple{T, T}) where T <: Number
+
+Extend Base.+ to add two 2D tuples element-wise.
+Used for combining nominal positions with perturbations.
+
+# Arguments
+- `a`: First tuple of two numbers
+- `b`: Second tuple of two numbers
+
+# Returns
+- A tuple containing the element-wise sum
+"""
 function Base.:+(a::Tuple{T, T}, b::Tuple{T, T}) where T <: Number
     return (a[1] + b[1], a[2] + b[2])
 end
@@ -26,15 +56,30 @@ end
 # C6 coefficient and perfect r = 7 um
 const C6 = 5420158.53
 
-# Bulding the TFI Hamiltonian
+"""
+    HTFI(g::NamedGraph, hs::Dict, Jzzs::Vector{Float64}, edgs::Vector{Tuple{Tuple{Int64, Int64},Tuple{Int64,Int64}}}, sites)
+
+Construct the Transverse Field Ising (TFI) Hamiltonian for a given graph configuration.
+
+# Arguments
+- `g`: Named graph representing the lattice structure
+- `hs`: Dictionary mapping vertices to their transverse field strengths
+- `Jzzs`: Vector of ZZ interaction strengths for each edge
+- `edgs`: Vector of edge tuples defining the connectivity
+- `sites`: ITensor site indices for the quantum system
+
+# Returns
+- An MPO (Matrix Product Operator) representing the TFI Hamiltonian
+"""
 function HTFI(g::NamedGraph, hs::Dict, Jzzs::Vector{Float64}, edgs::Vector{Tuple{Tuple{Int64, Int64},Tuple{Int64,Int64}}}, sites)
     ampo = OpSum()
-    g_vs = vertices(g)
+    g_vs = collect(vertices(g))
     # Run over the edges and add the ZZ term to the Hamiltonian with the appropriate interaction strength J
     for (idx,J) in enumerate(Jzzs)
         src = edgs[idx][1]
         dst = edgs[idx][2]
-        i, j = findfirst(v -> v == src, g_vs), findfirst(v -> v == dst, g_vs)
+        i = findfirst(v -> v == src, g_vs)
+        j = findfirst(v -> v == dst, g_vs)
         if !iszero(J)  
             ampo += J, "Z", i, "Z", j # Pauli Z operator, Sz = 1/2 σz, - => ferro, + => antiferro
         end
@@ -51,6 +96,24 @@ function HTFI(g::NamedGraph, hs::Dict, Jzzs::Vector{Float64}, edgs::Vector{Tuple
     return H
 end
   
+"""
+    TFI_DMRG(g::NamedGraph, χ::Int64, edgs::Vector{Tuple{Tuple{Int64, Int64},Tuple{Int64,Int64}}}, sites; 
+             nsweeps=20, hs::Union{Nothing,Dict}=nothing, Jzzs::Vector{Float64})
+
+Perform DMRG calculation for the TFI model to find the ground state.
+
+# Arguments
+- `g`: Named graph representing the lattice structure
+- `χ`: Maximum bond dimension for the MPS
+- `edgs`: Vector of edge tuples defining the connectivity
+- `sites`: ITensor site indices
+- `nsweeps`: Number of DMRG sweeps (default: 20)
+- `hs`: Dictionary of transverse field strengths (default: all 1.0)
+- `Jzzs`: Vector of ZZ interaction strengths
+
+# Returns
+- The ground state as an MPS (Matrix Product State)
+"""
 function TFI_DMRG(g::NamedGraph, χ::Int64, edgs::Vector{Tuple{Tuple{Int64, Int64},Tuple{Int64,Int64}}}, sites; nsweeps=20, hs::Union{Nothing,Dict} = nothing, Jzzs::Vector{Float64})
     L = length(vertices(g))
     if hs === nothing
@@ -62,7 +125,7 @@ function TFI_DMRG(g::NamedGraph, χ::Int64, edgs::Vector{Tuple{Tuple{Int64, Int6
 
     # Initial state for DMRG routine (all spins pointing up)
     init_state = ["Up" for _ in 1:L]
-    ψ0 = randomMPS(sites, init_state; linkdims = 2)
+    ψ0 = ITensors.randomMPS(sites, init_state; linkdims = 2)
 
     # Set truncation parameters and no sweeps
     sweeps = Sweeps(nsweeps)
@@ -76,6 +139,28 @@ function TFI_DMRG(g::NamedGraph, χ::Int64, edgs::Vector{Tuple{Tuple{Int64, Int6
     return ψ0
 end
 
+"""
+    main_Mg_NN_NNN_δ(nx::Int, ny::Int, num_realization::Int, num_δs::Int, χDMRG::Int, R::Float64,
+                     amp_R::Float64, hx::Float64, amp_delta::Float64, path_to_folder::String;
+                     is_sampled=false, num_samples=1000, start_iter=0)
+
+Main function to generate data for nearest-neighbor (NN) and next-nearest-neighbor (NNN) interactions
+with varying transverse field strengths and position disorder.
+
+# Arguments
+- `nx`, `ny`: Dimensions of the lattice
+- `num_realization`: Number of disorder realizations
+- `num_δs`: Number of different transverse field strengths
+- `χDMRG`: Maximum bond dimension for DMRG
+- `R`: Nominal lattice spacing
+- `amp_R`: Amplitude of position disorder
+- `hx`: Central value of transverse field
+- `amp_delta`: Amplitude of transverse field variation
+- `path_to_folder`: Output directory path
+- `is_sampled`: Whether to sample from wavefunctions (default: false)
+- `num_samples`: Number of samples if sampling (default: 1000)
+- `start_iter`: Starting iteration number (default: 0)
+"""
 function main_Mg_NN_NNN_δ(nx::Int,ny::Int,num_realization::Int,num_δs::Int,χDMRG::Int,R::Float64,amp_R::Float64,hx::Float64,
     amp_delta::Float64,path_to_folder::String;is_sampled=false,num_samples=1000,start_iter=0)
 
@@ -104,7 +189,7 @@ function main_Mg_NN_NNN_δ(nx::Int,ny::Int,num_realization::Int,num_δs::Int,χD
     # NOTE WE ARE IMPLICITING ORDERING THE MPS VERTICES AS A SNAKE THROUGH THE LATTICE. 
     # TO CHANGE THE ORDERING OF THE SITES (WHICH MIGHT HELP/HINDER THE SIMULATION) THEN WE NEED
     # TO REORDER THE LIST vertices(g) APPROPRIATELY
-    g = named_grid((nx, ny))
+    g = NamedGraphs.NamedGraphGenerators.named_grid((nx, ny))
 
     # Needed to switch between NamedGraphs and GNN edges
     nodes = [i for i=0:length(vertices(g))-1]
@@ -243,6 +328,26 @@ function main_Mg_NN_NNN_δ(nx::Int,ny::Int,num_realization::Int,num_δs::Int,χD
 end
 
 
+"""
+    main_Mg_NN_NNN_δ_smpl(nx::Int, ny::Int, num_δs::Int, χDMRG::Int, R::Float64,
+                          amp_R::Float64, hx::Float64, amp_delta::Float64, path_to_folder::String;
+                          num_samples=1000, start_iter=0)
+
+Similar to main_Mg_NN_NNN_δ but specifically for generating sampled measurements from wavefunctions.
+This version uses a single disorder realization but generates multiple samples for each transverse field value.
+
+# Arguments
+- `nx`, `ny`: Dimensions of the lattice
+- `num_δs`: Number of different transverse field strengths
+- `χDMRG`: Maximum bond dimension for DMRG
+- `R`: Nominal lattice spacing
+- `amp_R`: Amplitude of position disorder
+- `hx`: Central value of transverse field
+- `amp_delta`: Amplitude of transverse field variation
+- `path_to_folder`: Output directory path
+- `num_samples`: Number of samples per configuration (default: 1000)
+- `start_iter`: Starting iteration number (default: 0)
+"""
 function main_Mg_NN_NNN_δ_smpl(nx::Int,ny::Int,num_δs::Int,χDMRG::Int,R::Float64,amp_R::Float64,hx::Float64,
     amp_delta::Float64,path_to_folder::String;num_samples=1000,start_iter=0)
 
@@ -269,7 +374,7 @@ function main_Mg_NN_NNN_δ_smpl(nx::Int,ny::Int,num_δs::Int,χDMRG::Int,R::Floa
     # NOTE WE ARE IMPLICITING ORDERING THE MPS VERTICES AS A SNAKE THROUGH THE LATTICE. 
     # TO CHANGE THE ORDERING OF THE SITES (WHICH MIGHT HELP/HINDER THE SIMULATION) THEN WE NEED
     # TO REORDER THE LIST vertices(g) APPROPRIATELY
-    g = named_grid((nx, ny))
+    g = NamedGraphs.NamedGraphGenerators.named_grid((nx, ny))
 
     # Needed to switch between NamedGraphs and GNN edges
     nodes = [i for i=0:length(vertices(g))-1]
