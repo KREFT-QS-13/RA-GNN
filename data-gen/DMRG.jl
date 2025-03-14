@@ -508,7 +508,26 @@ end
 # CODE FOR EXPERIMENT 1: Error vs Bond Dimension
 #
 # ------------------------------------------------------------------------------------------------
-function exp_TFI_DMRG(g::NamedGraph, χ::Int64, edgs::Vector{Tuple{Tuple{Int64, Int64},Tuple{Int64,Int64}}}, sites; nsweeps=20, hs::Union{Nothing,Dict} = nothing, Jzzs::Vector{Float64})
+mutable struct MyObserver <: AbstractObserver
+    max_trunc_error::Float64
+    truncerr_history::Vector{Float64}
+end
+
+# Constructor with default values
+MyObserver() = MyObserver(0.0, Float64[])
+
+function ITensors.measure!(obs::MyObserver; kwargs...)
+    if haskey(kwargs, :spec)
+        spec = kwargs[:spec]
+        if !isnothing(spec)
+            trunc_err = spec.truncerr
+            obs.max_trunc_error = max(obs.max_trunc_error, trunc_err)
+            push!(obs.truncerr_history, trunc_err)
+        end
+    end
+end
+
+function exp_TFI_DMRG(g::NamedGraph, edgs::Vector{Tuple{Tuple{Int64, Int64},Tuple{Int64,Int64}}}, sites; nsweeps=20, hs::Union{Nothing,Dict} = nothing, Jzzs::Vector{Float64})
     L = length(vertices(g))
     if hs === nothing
         hs = Dict(zip(vertices(g), [1.0 for e in vertices(g)]))
@@ -520,10 +539,6 @@ function exp_TFI_DMRG(g::NamedGraph, χ::Int64, edgs::Vector{Tuple{Tuple{Int64, 
     # Initial state for DMRG routine (all spins pointing up)
     init_state = ["Up" for _ in 1:L]
     ψ0 = ITensors.randomMPS(sites, init_state; linkdims = 2)
-
-    # Set truncation parameters and no sweeps
-    # maxdim!(sweeps, Tuple(min(2^(floor(Int64, 0.5*i)), χ)  for i in 1:nsweeps)...)
-
 
     println("Starting DMRG for reference energy...")
     sweeps = Sweeps(nsweeps)
@@ -537,25 +552,33 @@ function exp_TFI_DMRG(g::NamedGraph, χ::Int64, edgs::Vector{Tuple{Tuple{Int64, 
 
     # Run DMRG Experiment
     errors = Float64[]  # Store error values
+    max_truncation_errors = Float64[]  # Store maximum truncation errors
+    
     for md in maxdims
-        # E, _ = dmrg(H, ψ0; nsweeps=nsweeps, maxdim=md, cutoff=1e-8, observer=obs)
+        d = hs[first(vertices(g))]
+        println("-"^20)
+        println("Starting DMRG for delta = $d bond dimension = $md:")
+
+        obs = MyObserver() # Reset observer for each bond dimension
         sweeps = Sweeps(nsweeps)
         maxdim!(sweeps, md)
-        # cutoff!(sweeps, 1E-8)
-        E, _ = dmrg(H, ψ0, sweeps)
+        E, _ = dmrg(H, ψ0, sweeps; observer=obs)
 
         error = abs(E - E_ref)  # Compute absolute error
         push!(errors, error)  # Store the error
-        println("maxdim = $md, Energy = $E, Error = $error")
+        push!(max_truncation_errors, obs.max_trunc_error)
+         
+        println("maxdim = $md: Energy = $E, Error = $error, Max truncation error = $(obs.max_trunc_error)")
+        println("-"^20*"\n")
     end
 
     println("Finished.")
 
-    return errors, maxdims
+    return errors, maxdims, max_truncation_errors
 end
 
 
-function experiment_err_vs_bond_dim(nx::Int, ny::Int, χDMRG::Int, R::Float64, amp_R::Float64, hx::Float64, path_to_folder::String="./Experiment_1")
+function experiment_err_vs_bond_dim(nx::Int, ny::Int, R::Float64, amp_R::Float64, hx::Float64, path_to_folder::String="./Experiment_1")
     # Create the directory structure first
     size_dir = joinpath(path_to_folder, "$(nx)x$(ny)")
     mkpath(size_dir)
@@ -634,13 +657,16 @@ function experiment_err_vs_bond_dim(nx::Int, ny::Int, χDMRG::Int, R::Float64, a
     hhh = Dict(zip(vertices(g), fill(hx, num_vertices)))
        
     # Run DMRG experiment
-    @time errors, maxdims = exp_TFI_DMRG(g, χDMRG, edges_array, sites; hs = hhh, Jzzs = Jij)
-    
+    @time errors, maxdims, max_truncation_errors = exp_TFI_DMRG(g, edges_array, sites; hs = hhh, Jzzs = Jij)
+    println("Finished DMRG experiment.")
+    println("-"^20*"\n")
+
     # Save results
     npzwrite(filename, Dict(
         "hxs" => fill(hx, num_vertices),
         "errors" => errors,
-        "maxdims" => maxdims
+        "maxdims" => maxdims,
+        "max_truncation_errors" => max_truncation_errors
     ))
 end
 

@@ -31,14 +31,10 @@ def draw_plots_error_vs_maxdim(nx:int, ny:int, delta:list[float], amp_R:float=0.
             vs_value = data["errors"]
             plot_title = f"Energy error vs Bond Dimension for 2D TFIM, {nx}x{ny} sqr. lat."
             plt.ylabel("Energy err. $|E - E_{ref}|$", fontsize=18)
-        elif vs == "energy":
-            vs_value = data["energy_history"]
-            plt.title(f"Error hist vs Bond Dimension for 1D TFIM, {nx}x{ny} sqr. lat.", fontsize=20)
-            plt.ylabel("Error history", fontsize=18)
-        elif vs == "max_err":
-            vs_value = data["max_err_history"]
-            plt.title(f"Max error per swap vs Bond Dimension for 1D TFIM, {nx}x{ny} sqr. lat.", fontsize=20)
-            plt.ylabel("Max error", fontsize=18)
+        elif vs == "max_trunc_err":
+            vs_value = data["max_truncation_errors"]
+            plot_title = f"Trunc. err. vs Bond Dimension for 2D TFIM, {nx}x{ny} sqr. lat."
+            plt.ylabel("Max truncation error", fontsize=18)
         else:
             raise ValueError(f"Invalid vs value: {vs}")
 
@@ -53,8 +49,16 @@ def draw_plots_error_vs_maxdim(nx:int, ny:int, delta:list[float], amp_R:float=0.
                  markersize=5,
                 )
 
-    plt.legend(loc="upper right")
-    filename = f'imgs\{filename}_{nx}x{ny}' if amp_R == 0.0 else f'{filename}_{nx}x{ny}_per'
+    plt.legend(loc="upper right", fontsize=13)
+
+    if vs == "error":
+        filename_base = "plot_err_vs_maxdim"
+    elif vs == "max_trunc_err":
+        filename_base = "plot_trunc_err_vs_maxdim"
+    else:
+        raise ValueError(f"Invalid vs value: {vs}")
+
+    filename = f'imgs\{filename_base}_{nx}x{ny}' if amp_R == 0.0 else f'{filename_base}_{nx}x{ny}_per'
     plt.savefig(filename+".png")
     plt.show()
 
@@ -63,14 +67,16 @@ def main():
     parser.add_argument('-nx', type=int, default=4, help='Number of sites in x direction')
     parser.add_argument('-ny', type=int, default=4, help='Number of sites in y direction')
     parser.add_argument('-amp_R', type=float, default=0.0)
+    parser.add_argument('-vs', type=str, default="error", help='Variable to plot: error or max_trunc_err')
     args = parser.parse_args()
 
     amp_R = args.amp_R
     nx, ny = args.nx, args.ny
+    vs = args.vs
 
     delta = [0.0, 10.0, 20.0, 25.0, 30.0, 50.0, 100.0]
     print(f"Plot for: size = {nx}x{ny} , delta = {delta}")
-    draw_plots_error_vs_maxdim(nx, ny, delta, amp_R, vs="error")
+    draw_plots_error_vs_maxdim(nx, ny, delta, amp_R, vs=vs)
 
 if __name__ == "__main__":
     main()
