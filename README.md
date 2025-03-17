@@ -4,5 +4,11 @@ All work done in this project relates to the following paper: [Learning interact
 
 Supervisor: **Anna Dawid**
 
+To-do list:
+- [x] Benchmark the dmrg method from ITensors (Experiment_1 and plot from imgs)
+- [] Generate datasets based on the paper
+
+
+
 
 
