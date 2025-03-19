@@ -113,12 +113,14 @@ function correlations_GNN_edges(g::NamedGraph, ψ::ITensors.MPS,
     NN_NNN_edges::Vector{Tuple{Int64, Int64, Float64}}, Julia_Python_node_mapping::Dict{Int64, Tuple{Int64, Int64}})
     out = Dict(zip(NN_NNN_edges, [0.0 for e in NN_NNN_edges]))
     C = correlation_matrix(ψ, "Z", "Z")
+    # FIXED here: C[v1_linear_index, v2_linear_index] = indices error without this
+    vs = collect(vertices(g))
     for e in NN_NNN_edges
         v1, v2 = Julia_Python_node_mapping[e[1]], Julia_Python_node_mapping[e[2]]
-        v1_linear_index, v2_linear_index = findfirst(v -> v == v1, vertices(g)), findfirst(v -> v == v2, vertices(g))
+        # Fixed here previous error: vertices(g) not vs -> C[(i,j),(k,l)]
+        v1_linear_index, v2_linear_index = findfirst(v -> v == v1, vs), findfirst(v -> v == v2, vs)
         out[e] = C[v1_linear_index, v2_linear_index]
     end
-
     return out
 end
 
@@ -144,9 +146,12 @@ function correlations_GNN_edges_X(g::NamedGraph, ψ::ITensors.MPS,
     NN_NNN_edges::Vector{Tuple{Int64, Int64, Float64}}, Julia_Python_node_mapping::Dict{Int64, Tuple{Int64, Int64}})
     out = Dict(zip(NN_NNN_edges, [0.0 for e in NN_NNN_edges]))
     C = correlation_matrix(ψ, "X", "X")
+    # FIXED here: C[v1_linear_index, v2_linear_index] = indices error without this
+    vs = collect(vertices(g))
     for e in NN_NNN_edges
         v1, v2 = Julia_Python_node_mapping[e[1]], Julia_Python_node_mapping[e[2]]
-        v1_linear_index, v2_linear_index = findfirst(v -> v == v1, vertices(g)), findfirst(v -> v == v2, vertices(g))
+        # Fixed here previous error: vertices(g) not vs -> C[(i,j),(k,l)]
+        v1_linear_index, v2_linear_index = findfirst(v -> v == v1, vs), findfirst(v -> v == v2, vs)
         out[e] = C[v1_linear_index, v2_linear_index]
     end
 
