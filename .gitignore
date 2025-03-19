@@ -5,3 +5,6 @@ data-gen/Datasets/*
 data-gen/Experiment_1/*
 
 code-RA-GNN-workspace.code-workspace
+
+
+SLURM_jobs/*
