@@ -14,7 +14,8 @@ num_samples = 1000
 
 # Maximum bond dimension for ground state and time evolution 
 # (accuracy parameter, χ -> infinity is guaranteed to be exact. Simulation time scales as χ^{3})
-χDMRG  = 80
+χDMRG  = 80 # increase by 10 for different sizes nx, ny = 5,5 -> χDMRG = 90
+
 
 # Initial x-field strength for the ground state simulation
 R = 10.0; amp_R = 0.2  # in micrometers 
