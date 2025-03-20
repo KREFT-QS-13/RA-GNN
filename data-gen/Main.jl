@@ -5,7 +5,7 @@ using .DMRG
 # nx is num columns, ny is num rows
 nx, ny = 4,4
 # number of samples to realize (number of distinct Jzz configurations, given that each of those imply num_δs constant transverse fields)
-num_realization = 2000 # the effective total number of realizations is num_realization*num_δs
+num_realization = 200 # the effective total number of realizations is num_realization*num_δs
 num_δs = 10  # If one uses a single delta, `amp_delta' has be set to null
 
 # Select the way to calculate correlation functions

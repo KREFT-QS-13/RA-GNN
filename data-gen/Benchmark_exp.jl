@@ -64,7 +64,7 @@ function exp_TFI_DMRG(g::NamedGraph, edgs::Vector{Tuple{Tuple{Int64, Int64},Tupl
 
     println("Starting DMRG for reference energy...")
     sweeps = Sweeps(nsweeps)
-    maxdim!(sweeps, 200)
+    maxdim!(sweeps, Tuple(min(2^(floor(Int64, 0.5*i)), 200)  for i in 1:nsweeps)...)
     cutoff!(sweeps, 1E-18)
     E_ref, _ = dmrg(H, ψ0, sweeps)
     println("Reference energy (high precision) = ", E_ref)
@@ -83,7 +83,8 @@ function exp_TFI_DMRG(g::NamedGraph, edgs::Vector{Tuple{Tuple{Int64, Int64},Tupl
 
         obs = MyObserver() # Reset observer for each bond dimension
         sweeps = Sweeps(nsweeps)
-        maxdim!(sweeps, md)
+        maxdim!(sweeps, Tuple(min(2^(floor(Int64, 0.5*i)), md)  for i in 1:nsweeps)...)
+
         E, _ = dmrg(H, ψ0, sweeps; observer=obs)
 
         error = abs(E - E_ref)  # Compute absolute error

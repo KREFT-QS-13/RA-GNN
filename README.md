@@ -7,7 +7,7 @@ Supervisor: **Anna Dawid**
 To-do list:
 - [x] Benchmark the dmrg method from ITensors (Experiment_1 and plot from imgs)
 - [ ] Generate datasets based on the paper (20 000 + 2000 per size):
-    - [ ] 4x4
+    - [x] 4x4
     - [ ] 5x5
     - [ ] 6x6
     - [ ] 7x6
