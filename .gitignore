@@ -6,4 +6,4 @@ data-gen/Experiment_1/*
 
 code-RA-GNN-workspace.code-workspace
 
-SLURM_jobs/*
+data-gen/SLURM_jobs/*
