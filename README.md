@@ -13,6 +13,6 @@ To-do list:
     - [x] 7x6 (χDMRG = 110, only test dataset)
     - [x] 7x7 (χDMRG = 120, only test dataset)
     - [x] 8x7 (χDMRG = 130, only test dataset)
-    - [ ] 8x8 (χDMRG = 140, only test dataset)
+    - [x] 8x8 (χDMRG = 140, only test dataset)
     - [ ] 9x8 (χDMRG = 150, only test dataset)
     - [ ] 9x9 (χDMRG = 160, only test dataset)
