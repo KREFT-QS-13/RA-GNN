@@ -101,7 +101,7 @@ function exp_TFI_DMRG(g::NamedGraph, edgs::Vector{Tuple{Tuple{Int64, Int64},Tupl
 end
 
 
-function experiment_err_vs_bond_dim(nx::Int, ny::Int, R::Float64, amp_R::Float64, hx::Float64, path_to_folder::String="./Experiment_1")
+function experiment_err_vs_bond_dim(nx::Int, ny::Int, R::Float64, amp_R::Float64, hx::Float64, alpha::Int=6, path_to_folder::String="./Experiment_1")
     # Create the directory structure first
     size_dir = joinpath(path_to_folder, "$(nx)x$(ny)")
     mkpath(size_dir)
@@ -173,7 +173,7 @@ function experiment_err_vs_bond_dim(nx::Int, ny::Int, R::Float64, amp_R::Float64
     )
 
     distances = distances[mask]
-    Jij = C6./(distances.^6)
+    Jij = C6./(distances.^alpha)
 
     # Simplified version for num_δs = 1
     # Create uniform field strength for all vertices

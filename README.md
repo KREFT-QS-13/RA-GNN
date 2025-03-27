@@ -16,3 +16,4 @@ To-do list:
     - [x] 8x8 (χDMRG = 140, only test dataset)
     - [ ] 9x8 (χDMRG = 150, only test dataset)
     - [ ] 9x9 (χDMRG = 160, only test dataset)
+- [ ] Make plots trunc_err vs bond dim. for different values $`\alpha`$ : $`R^{-\alpha}`$
