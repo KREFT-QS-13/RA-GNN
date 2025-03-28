@@ -30,6 +30,7 @@ const C6 = 5420158.53
 # CODE FOR EXPERIMENT 1: Error vs Bond Dimension
 #
 # ------------------------------------------------------------------------------------------------
+# To used any futher but ready for more andvanced use -> moved to just DMRGObserver
 mutable struct MyObserver <: AbstractObserver
     max_trunc_error::Float64
     truncerr_history::Vector{Float64}
@@ -64,8 +65,10 @@ function exp_TFI_DMRG(g::NamedGraph, edgs::Vector{Tuple{Tuple{Int64, Int64},Tupl
 
     println("Starting DMRG for reference energy...")
     sweeps = Sweeps(nsweeps)
-    maxdim!(sweeps, Tuple(min(2^(floor(Int64, 0.5*i)), 200)  for i in 1:nsweeps)...)
     cutoff!(sweeps, 1E-18)
+    # maxdim!(sweeps, Tuple(min(2^(floor(Int64, 0.5*i)), 200)  for i in 1:nsweeps)...)
+    maxdim!(sweeps, 200)
+
     E_ref, _ = dmrg(H, ψ0, sweeps)
     println("Reference energy (high precision) = ", E_ref)
 
@@ -81,17 +84,18 @@ function exp_TFI_DMRG(g::NamedGraph, edgs::Vector{Tuple{Tuple{Int64, Int64},Tupl
         println("-"^20)
         println("Starting DMRG for delta = $d bond dimension = $md:")
 
-        obs = MyObserver() # Reset observer for each bond dimension
+        obs = DMRGObserver() # Reset observer for each bond dimension
         sweeps = Sweeps(nsweeps)
-        maxdim!(sweeps, Tuple(min(2^(floor(Int64, 0.5*i)), md)  for i in 1:nsweeps)...)
+        # maxdim!(sweeps, Tuple(min(2^(floor(Int64, 0.5*i)), md)  for i in 1:nsweeps)...)
+        maxdim!(sweeps, md)
 
         E, _ = dmrg(H, ψ0, sweeps; observer=obs)
 
         error = abs(E - E_ref)  # Compute absolute error
         push!(errors, error)  # Store the error
-        push!(max_truncation_errors, obs.max_trunc_error)
+        push!(max_truncation_errors, obs.truncerrs[end])
          
-        println("maxdim = $md: Energy = $E, Error = $error, Max truncation error = $(obs.max_trunc_error)")
+        println("maxdim = $md: Energy = $E, Error = $error, Max truncation error = $(obs.truncerrs[end])")
         println("-"^20*"\n")
     end
 

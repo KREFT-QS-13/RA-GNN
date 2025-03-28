@@ -34,7 +34,7 @@ path_to_folder = parsed_args["folder"]
 
 # fix perturabtions such it will be the same for all deltas
 R = 10.0; amp_R = parsed_args["amp_R"] 
-deltas = [0.0, 10.0, 20.0, 25.0, 30.0, 50.0, 100.0]
+deltas = [0.1, 10.0, 20.0, 25.0, 30.0, 50.0, 100.0]
 
 for d in deltas
     experiment_err_vs_bond_dim(nx, ny, R, amp_R, d, alpha, path_to_folder)

@@ -3,6 +3,10 @@ testing/
 data-gen/Datasets/*
 
 data-gen/Experiment_1/*
+# data-gen/Benchmark/*
+# data-gen/Benchmark-v2/*
+# data-gen/Benchmark-alpha/*
+# data-gen/Benchmark*
 
 code-RA-GNN-workspace.code-workspace
 

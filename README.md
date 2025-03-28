@@ -4,8 +4,13 @@ All work done in this project relates to the following paper: [Learning interact
 
 Supervisor: **Anna Dawid**
 
+### Benchmark
+- Folder *Benchmark* contains the experiments tracking the error and max truncation error vs the bond dimension for different values of $`\delta`$
+- Folder *Benchmark-v2* contains the same experiments, but the sweep scheduling of bond dimension is the same as in the original code (it starts with small values, then grows to the set limit.)
+- Folder *Benchmark-alpha* contains error and max truncation error vs the bond dimension for different values of $`\delta`$ and different degree of spin-spin interaction coefficient $` J_{ij}\sim R^{-\alpha}`$ 
+
 To-do list:
-- [x] Benchmark the dmrg method from ITensors (Experiment_1 and plot from imgs)
+- [x] Benchmark the dmrg method from ITensors (Benchmark(-v2) folder)
 - [ ] Generate datasets based on the paper (20 000 + 2000 per size):
     - [x] 4x4 (χDMRG = 80)
     - [x] 5x5 (χDMRG = 90)

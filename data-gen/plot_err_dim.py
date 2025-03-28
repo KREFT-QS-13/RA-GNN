@@ -58,7 +58,7 @@ def draw_plots_error_vs_maxdim(nx:int, ny:int, delta:list[float], amp_R:float=0.
     else:
         raise ValueError(f"Invalid vs value: {vs}")
 
-    save_dir = os.path.join("imgs", folder)
+    save_dir = os.path.join(folder, "imgs")
     os.makedirs(save_dir, exist_ok=True)
     filename = f'{filename_base}_{nx}x{ny}' if amp_R == 0.0 else f'{filename_base}_{nx}x{ny}_per'
     filename = os.path.join(save_dir, filename)
@@ -79,7 +79,7 @@ def main():
     vs = args.vs
     folder = args.folder
 
-    delta = [0.0, 10.0, 20.0, 25.0, 30.0, 50.0, 100.0]
+    delta = [0.1, 10.0, 20.0, 25.0, 30.0, 50.0, 100.0]
     print(f"Plot for: size = {nx}x{ny} , delta = {delta}")
     draw_plots_error_vs_maxdim(nx, ny, delta, amp_R, vs=vs, folder=folder)
 
