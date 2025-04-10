@@ -11,14 +11,18 @@ Supervisor: **Anna Dawid**
 
 To-do list:
 - [x] Benchmark the dmrg method from ITensors (Benchmark(-v2) folder)
-- [ ] Generate datasets based on the paper (20 000 + 2000 per size):
+- [x] Generate datasets based on the paper (20 000 + 2000 per size):
     - [x] 4x4 (χDMRG = 80)
     - [x] 5x5 (χDMRG = 90)
-    - [ ] 6x6 (χDMRG = 100)
+    - [x] 6x6 (χDMRG = 100)
     - [x] 7x6 (χDMRG = 110, only test dataset)
     - [x] 7x7 (χDMRG = 120, only test dataset)
     - [x] 8x7 (χDMRG = 130, only test dataset)
     - [x] 8x8 (χDMRG = 140, only test dataset)
-    - [ ] 9x8 (χDMRG = 150, only test dataset)
-    - [ ] 9x9 (χDMRG = 160, only test dataset)
-- [ ] Make plots trunc_err vs bond dim. for different values $`\alpha`$ : $`R^{-\alpha}`$
+    - [x] 9x8 (χDMRG = 150, only test dataset)
+    - [x] 9x9 (χDMRG = 160, only test dataset)
+- [x] Fixed datasets: 5x5, 6x6, 7x6
+- [ ] Calc the $C_3$ based on experimental value from papers
+- [ ] Make plots trunc_err vs bond dim. for different values $`\alpha=3`$ : $`J_{ij}\sim R^{-\alpha}`$
+- [ ] Start developing GNN-PNA model
+-

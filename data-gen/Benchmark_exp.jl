@@ -88,7 +88,7 @@ function exp_TFI_DMRG(g::NamedGraph, edgs::Vector{Tuple{Tuple{Int64, Int64},Tupl
         sweeps = Sweeps(nsweeps)
         # maxdim!(sweeps, Tuple(min(2^(floor(Int64, 0.5*i)), md)  for i in 1:nsweeps)...)
         maxdim!(sweeps, md)
-
+        
         E, _ = dmrg(H, ψ0, sweeps; observer=obs)
 
         error = abs(E - E_ref)  # Compute absolute error
