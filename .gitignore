@@ -11,3 +11,6 @@ data-gen/Experiment_1/*
 code-RA-GNN-workspace.code-workspace
 
 data-gen/SLURM_jobs/*
+
+GNN/Results/*
+GNN/__pycache__/*
