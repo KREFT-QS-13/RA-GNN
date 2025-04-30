@@ -18,7 +18,7 @@
     "Physical_hyperparameters":
     {
         "Ls": ["4x4","5x5","6x6"], 
-        "total_samples": 2000,
+        "total_samples": 200,
         "portions": [0.8,0.1,0.1],
         "num_deltas": 10,
         "load_former_models": false,
@@ -28,5 +28,5 @@
     "save_to_one_shots": true,
     "save_variances": false,
     "folder_models": "./Results/models/",
-    "folder_datasets": "../data-gen/Datasets/dataset_NO_Dr_X_Mg_NN_NNN_delta_one"
+    "folder_datasets": "../data-gen/Datasets/dataset_NO_Dr_X_Mg_NN_NNN_delta_one/test-fig4"
 }

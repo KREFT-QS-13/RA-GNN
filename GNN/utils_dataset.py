@@ -14,8 +14,52 @@ from torch_geometric.loader import DataLoader
 from scipy.linalg import norm
 import pickle
 from typing import List, Dict, Tuple
+import json, os
 
 __all__=["split_string_around_substring","tup_edges","load_datasets_mag_NN_NNN_δ"]
+
+def load_training_parameters(path: str) -> Dict:
+    with open(path, 'r') as jsonf:
+        parameters = json.load(jsonf)
+
+    gnn_parms = parameters["GNN_hyperparameters"]
+    phys_parms = parameters["Physical_hyperparameters"]
+    gen_parms = parameters["General_parameters"]
+
+    jsonf.close()
+    return gnn_parms, phys_parms, gen_parms
+    
+def load_test_parameters(path: str) -> Dict:
+    with open(path, 'r') as jsonf:
+        parameters = json.load(jsonf)
+
+    test_parms = parameters["Test_hyperparameters"]
+
+    jsonf.close()
+    return test_parms
+
+def realization_slicing(dictionary: dict[str,float], target_key: str, total_samples: int) -> float:
+    total = 0.0
+    total_before_target = 0.0
+    for key in dictionary:
+        if key == target_key:
+            total += dictionary[key]
+            break
+        else:
+            total_before_target += dictionary[key]
+            total += dictionary[key]
+
+    samples_before_target = int(total_before_target*total_samples)
+    samples_target = int(total*total_samples)
+    return samples_before_target, samples_target
+
+def check_pickle_files_exist(phys_parms: dict, gen_parms: dict) -> bool:
+    for L in phys_parms["Ls"]:
+        for dataset in phys_parms["datasets"].keys():
+            pickle_path = os.path.join(gen_parms["folder_datasets"], f"MPS_dict_{L}_{dataset}.pkl")
+            if not os.path.exists(pickle_path):
+                return False
+    return True
 
 def split_string_around_substring(s: str, substring: str) -> Tuple[str,str]:
     # Find the index of the first occurrence of the substring

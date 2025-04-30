@@ -24,5 +24,5 @@ To-do list:
 - [x] Fixed datasets: 5x5, 6x6, 7x6
 - [ ] Calc the $C_3$ based on experimental value from papers
 - [ ] Make plots trunc_err vs bond dim. for different values $`\alpha=3`$ : $`J_{ij}\sim R^{-\alpha}`$
-- [ ] Start developing GNN-PNA model
--
+- [x] Start developing GNN-PNA model
+- [ ] Train GNN and recreate figure 4. from the papaer only for case 5
