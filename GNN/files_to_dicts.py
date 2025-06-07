@@ -8,7 +8,7 @@ import pickle
 
 import utils_dataset as uds
 
-def preprocess_data(data_folder:str, lengths:list[str], datasets:dict[str,float], realizations:int, num_δs:int, time_δ_file:int, include_Xs:bool=True, start_index:int=0):
+def preprocess_data(data_folder:str, lengths:list[str], datasets:dict[str,float], realizations:int, num_δs:int, time_δ_file:int, include_Xs:bool=True, start_index:int=0, path_to_save:str=None):
     """
     Preprocesses the data from the given folder and returns a dictionary of the data saved in the pickle file format.
 
@@ -17,6 +17,8 @@ def preprocess_data(data_folder:str, lengths:list[str], datasets:dict[str,float]
 
     total_samples = realizations*num_δs
     print(f"Total_samples = {total_samples} per size of systems.")
+    print(f"Start index = {start_index}")
+    print(f"Portions of data = {datasets}")
     print(f"Sizes of systems = {lengths}")
     for L in lengths:
         Lx, Ly = L.split('x')
@@ -59,9 +61,14 @@ def preprocess_data(data_folder:str, lengths:list[str], datasets:dict[str,float]
 
                 results_dict[iterator] = snapshot_array
                 iterator += 1
-            with open(data_folder + '/test-fig4' + "/MPS_dict_{Lx}x{Ly}_{d}.pkl".format(Lx=Lx, Ly=Ly, d=dataset), "wb") as tf:
-                pickle.dump(results_dict, tf)
+            # TODO: save to test-fig4 only second round of testing
+            if path_to_save: 
+                with open(path_to_save + "/MPS_dict_{Lx}x{Ly}_{d}.pkl".format(Lx=Lx, Ly=Ly, d=dataset), "wb") as tf:
+                    pickle.dump(results_dict, tf)
+            else:
+                with open(data_folder + "/MPS_dict_{Lx}x{Ly}_{d}.pkl".format(Lx=Lx, Ly=Ly, d=dataset), "wb") as tf:
+                    pickle.dump(results_dict, tf)
         
-        return "Preprocessed data saved to {data_folder}.\n\n" 
+    return "Preprocessed data saved to {data_folder}.\n\n" 
 
 

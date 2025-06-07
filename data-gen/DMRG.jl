@@ -63,7 +63,7 @@ function HTFI(g::NamedGraph, hs::Dict, Jzzs::Vector{Float64}, edgs::Vector{Tuple
     # Run over the vertices and the X field w/ strength h
     for v in g_vs
         i = findfirst(==(v), g_vs)
-        hh = hs[v]
+        hh = hs[v] # hh is the transverse field strength at site v, which corresponds to big omgea in the paper
         ampo += hh, "X", i
     end
     H = MPO(ampo, sites)
@@ -136,8 +136,8 @@ with varying transverse field strengths and position disorder.
 - `num_samples`: Number of samples if sampling (default: 1000)
 - `start_iter`: Starting iteration number (default: 0)
 """
-function main_Mg_NN_NNN_δ(nx::Int,ny::Int,num_realization::Int,num_δs::Int,χDMRG::Int,R::Float64,amp_R::Float64,hx::Float64,
-    amp_delta::Float64,path_to_folder::String;is_sampled=false,num_samples=1000,start_iter=0)
+function main_Mg_NN_NNN_δ(nx::Int,ny::Int, num_realization::Int, num_δs::Int, χDMRG::Int, R::Float64, amp_R::Float64, hx::Float64,
+    amp_delta::Float64, path_to_folder::String; is_sampled=false, num_samples=1000, start_iter=0)
 
     println("The total number of realizations is $(num_δs*num_realization)!")
 

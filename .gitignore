@@ -14,3 +14,4 @@ data-gen/SLURM_jobs/*
 
 GNN/Results/*
 GNN/__pycache__/*
+GNN/Figs/train/*

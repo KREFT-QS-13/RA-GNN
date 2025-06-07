@@ -1,0 +1,66 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import os
+import argparse
+import json
+from typing import Dict, Any, Tuple
+
+import plot_benchmarks_utiliites as pbu
+
+def load_plot_parameters(json_file: str) -> Tuple[Dict[str, Any], str]:
+    """
+    Load parameters from the benchmark parameters JSON file.
+    
+    Args:
+        json_file (str): Path to the JSON file
+        
+    Returns:
+        Tuple containing:
+        - Dict with parameters
+        - Path to the output folder
+    """
+    with open(json_file, 'r') as f:
+        params = json.load(f)
+    
+    # Extract relevant parameters
+    plot_params = {
+        'nx': params['lattice']['nx'],
+        'ny': params['lattice']['ny'],
+        'amp_R': params['lattice']['amp_R'],
+        'deltas': params['deltas'],
+        'output_folder': params['output']['folder']
+    }
+    
+    return plot_params, plot_params['output_folder']
+
+def main():
+    parser = argparse.ArgumentParser(description='Plot error vs bond dimension for TFIM')
+    parser.add_argument('--params', type=str, default='benchmark_parameters.json',
+                      help='Path to the JSON file containing benchmark parameters')
+    parser.add_argument('--vs', type=str, default="max_trunc_err",
+                      help='Variable to plot: error or max_trunc_err')
+    args = parser.parse_args()
+
+    # Load parameters from JSON
+    plot_params, output_folder = load_plot_parameters(args.params)
+    nx, ny = plot_params['nx'], plot_params['ny']
+    amp_R = plot_params['amp_R']
+    deltas = plot_params['deltas']
+    vs = args.vs
+
+    # Step 1: Plot error vs bond dimension
+    print(f"Plotting for: size = {nx}x{ny}, deltas = {deltas}")
+    pbu.draw_plots_error_vs_maxdim(nx, ny, deltas, amp_R, vs=vs, folder=output_folder)
+    
+    # Step 2: Ask for optimal bond dimension
+    print("\nWhat is the optimal bond dimension (enter below and press enter): ")
+    optimal_bond_dim = int(input())
+
+    # Step 3: Plot magnetization phase diagram
+    pbu.plot_magnetization_phase_diagram(nx, ny, output_folder, optimal_bond_dim, save_fig=True)
+    
+if __name__ == "__main__":
+    main()
+
+
+

@@ -11,13 +11,13 @@
         "warmup_ratio": 0.1,
         "minimum_lr_ratio": 0.05,
         "weight_decay": 1e-2,
-        "num_epochs": 750,
+        "num_epochs": 550,
         "batch_sizes": [64, 64, 64],
         "is_early_stopping": false
     },
-    
+
     "Physical_hyperparameters":
-    {
+    {   
         "Ls": ["4x4","5x5","6x6"], 
         "datasets": {"training": 0.8, "validation": 0.1, "test": 0.1},
         "train_realizations": 2000,
@@ -30,12 +30,11 @@
     "Test_hyperparameters":
     {   
         "datasets": {"test": 1.0},
-        "test_path": "../data-gen/Datasets/dataset_NO_Dr_X_Mg_NN_NNN_delta_one",
+        "test_path": "../data-gen/Datasets/dataset_NO_Dr_X_Mg_NN_NNN_delta_one/test-fig4",
         "load_former_models": true,
-        "test_Ls": ["4x4","5x5", "6x6", "7x6", "7x7", "7x8","8x8", "9x8", "9x9"],
+        "test_Ls": ["4x4","5x5", "6x6", "7x6", "7x7", "8x7","8x8", "9x8", "9x9"],
         "test_realizations": 200,
-        "test_num_deltas": 10,
-        "test_num_time_deltas": 10
+        "test_num_deltas": 10
     },
 
     "General_parameters":

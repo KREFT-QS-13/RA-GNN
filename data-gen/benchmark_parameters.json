@@ -1,0 +1,24 @@
+{
+    "lattice": {
+        "nx": 5,
+        "ny": 5,
+        "alpha": 6,
+        "R": 10.0,
+        "amp_R": 0.2
+    },
+    "deltas": [0.0, 2.5, 5.0, 10.0, 15.0, 17.5, 20.0, 30.0, 50.0],
+    "bond_dims": {
+        "start": 5,
+        "stop": 150,
+        "step": 5,
+        "include_1": true
+    },
+    "dmrg": {
+        "quick_start": true,
+        "ref_bond_dim": 200
+    },
+    "output": {
+        "folder": "Benchmark-all"
+    }
+} 
+

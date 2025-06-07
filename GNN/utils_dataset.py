@@ -19,24 +19,30 @@ import json, os
 __all__=["split_string_around_substring","tup_edges","load_datasets_mag_NN_NNN_δ"]
 
 def load_training_parameters(path: str) -> Dict:
-    with open(path, 'r') as jsonf:
-        parameters = json.load(jsonf)
+    if not os.path.exists(path):
+        raise FileNotFoundError(f"The file {path} does not exist.")
+    else:
+        with open(path, 'r') as jsonf:
+            parameters = json.load(jsonf)
 
-    gnn_parms = parameters["GNN_hyperparameters"]
-    phys_parms = parameters["Physical_hyperparameters"]
-    gen_parms = parameters["General_parameters"]
+        gnn_parms = parameters["GNN_hyperparameters"]
+        phys_parms = parameters["Physical_hyperparameters"]
+        gen_parms = parameters["General_parameters"]
 
-    jsonf.close()
-    return gnn_parms, phys_parms, gen_parms
+        jsonf.close()
+        return gnn_parms, phys_parms, gen_parms
     
 def load_test_parameters(path: str) -> Dict:
-    with open(path, 'r') as jsonf:
-        parameters = json.load(jsonf)
+    if not os.path.exists(path):
+        raise FileNotFoundError(f"The file {path} does not exist.")
+    else:
+        with open(path, 'r') as jsonf:
+            parameters = json.load(jsonf)
 
-    test_parms = parameters["Test_hyperparameters"]
+        test_parms = parameters["Test_hyperparameters"]    
+        jsonf.close()
 
-    jsonf.close()
-    return test_parms
+        return test_parms
 
 def realization_slicing(dictionary: dict[str,float], target_key: str, total_samples: int) -> float:
     total = 0.0
@@ -53,10 +59,10 @@ def realization_slicing(dictionary: dict[str,float], target_key: str, total_samp
     samples_target = int(total*total_samples)
     return samples_before_target, samples_target
 
-def check_pickle_files_exist(phys_parms: dict, gen_parms: dict) -> bool:
-    for L in phys_parms["Ls"]:
-        for dataset in phys_parms["datasets"].keys():
-            pickle_path = os.path.join(gen_parms["folder_datasets"], f"MPS_dict_{L}_{dataset}.pkl")
+def check_pickle_files_exist(Ls: List[str], datasets: List[str], path_to_datasets: str) -> bool:
+    for L in Ls:
+        for dataset in datasets:
+            pickle_path = os.path.join(path_to_datasets, f"MPS_dict_{L}_{dataset}.pkl")
             if not os.path.exists(pickle_path):
                 return False
     return True
@@ -149,13 +155,15 @@ def load_datasets_mag_NN_NNN_δ(num_realizations: List[int], Ls: List[str], num_
             
             edge_index = torch.as_tensor(edges, dtype=torch.long).T
 
-            Rs_nom = np.load(data_folder + "/{Lx}x{Ly}/Rs_nom.npy".format(Lx = Lx, Ly = Ly))
-            Rps_nom = np.load(data_folder + "/{Lx}x{Ly}/Rps_nom.npy".format(Lx = Lx, Ly = Ly))
+            Rs_nom = np.load(data_folder + "/{Lx}x{Ly}/Rs_nom.npy".format(Lx = Lx, Ly = Ly)) # nominal values for NN distances
+            Rps_nom = np.load(data_folder + "/{Lx}x{Ly}/Rps_nom.npy".format(Lx = Lx, Ly = Ly)) # nominal values for NNN distances
             for realization in range(num_realizations[it]):
                 
                 edge_attr = torch.empty((num_edges,num_deltas), dtype=dtype)
                 x_labels = torch.empty((num_nodes,num_deltas), dtype=dtype)
                 x = torch.empty((num_nodes,num_deltas), dtype=dtype)
+                
+                # Compute the difference between the target and the nominal (without perturbation) values
                 if trgt_diff:
                     ΔRs = np.array(results_dict[realization][0]['Rs']) - Rs_nom
                     ΔRps = np.array(results_dict[realization][0]['Rps']) - Rps_nom
@@ -163,6 +171,7 @@ def load_datasets_mag_NN_NNN_δ(num_realizations: List[int], Ls: List[str], num_
                     ΔRs = np.array(results_dict[realization][0]['Rs'])
                     ΔRps = np.array(results_dict[realization][0]['Rps'])
                 
+                # THOSE TWO IFs ARE BEING EXECUTED FOR OUR CASE ATM
                 if not incl_scnd: # decide to include the second-nearest neighbor targets in the training or not
                     if not meas_basis=="ZX":
                         edge_labels = torch.as_tensor( # the NNN correlation functions are not associated to any couplings of the Hamiltonian, hence the zeros

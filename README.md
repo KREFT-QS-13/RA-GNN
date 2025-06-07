@@ -25,4 +25,6 @@ To-do list:
 - [ ] Calc the $C_3$ based on experimental value from papers
 - [ ] Make plots trunc_err vs bond dim. for different values $`\alpha=3`$ : $`J_{ij}\sim R^{-\alpha}`$
 - [x] Start developing GNN-PNA model
-- [ ] Train GNN and recreate figure 4. from the papaer only for case 5
+- [x] Train GNN and recreate figure 4. from the papaer only for case 5
+- [ ] Recrate the figure 4 just for the MLP network at the end of the current architecture -> TODO: Mapping the input to make it compatible
+- [ ] Make phase diagram from the paper for just a short interval, to be able idetify if we are close to the phase transistion
