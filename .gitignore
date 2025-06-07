@@ -7,6 +7,16 @@ data-gen/Experiment_1/*
 # data-gen/Benchmark-v2/*
 # data-gen/Benchmark-alpha/*
 # data-gen/Benchmark*
+Benchmark*/*x*/*
+Benchmark/*x*/*
+
+# Ignore all .npz files in data-gen and its subfolders
+data-gen/**/*.npz
+
+# Ignore directories matching {number}x{number} in data-gen
+data-gen/[0-9]*x[0-9]*/
+data-gen/[0-9]x[0-9]/*
+
 
 code-RA-GNN-workspace.code-workspace
 
