@@ -27,6 +27,9 @@ def load_plot_parameters(json_file: str) -> Tuple[Dict[str, Any], str]:
         'nx': params['lattice']['nx'],
         'ny': params['lattice']['ny'],
         'amp_R': params['lattice']['amp_R'],
+        'alpha': params['lattice']['alpha'],
+        'R': params['lattice']['R'],
+        'C6': params['physics']['C6'],
         'deltas': params['deltas'],
         'output_folder': params['output']['folder']
     }
@@ -48,13 +51,17 @@ def main():
     # Load parameters from JSON
     plot_params, output_folder, bd_min, bd_max, bd_step = load_plot_parameters(args.params)
     nx, ny = plot_params['nx'], plot_params['ny']
+    alpha = plot_params['alpha']
+    R = plot_params['R']
     amp_R = plot_params['amp_R']
+    C6 = plot_params['C6']
     deltas = plot_params['deltas']
     vs = args.vs
 
     # Step 1: Plot error vs bond dimension
     print(f"Plotting for: size = {nx}x{ny}, deltas = {deltas}")
-    pbu.draw_plots_error_vs_maxdim(nx, ny, deltas, amp_R, vs=vs, folder=output_folder)
+    pbu.draw_plots_error_vs_maxdim(nx, ny, deltas, amp_R, vs=vs, folder=output_folder, 
+                                  physics_params={'C6': C6, 'alpha': alpha, 'R': R, 'amp_R': amp_R})
     
     # Step 2: Ask for optimal bond dimension
     print(f"\nWhat is the optimal bond dimension, from 1 to {bd_max} with step {bd_step} (enter below and press enter): ")
@@ -64,7 +71,8 @@ def main():
         optimal_bond_dim = int(input())
 
     # Step 3: Plot magnetization phase diagram
-    pbu.plot_magnetization_phase_diagram(nx, ny, output_folder, optimal_bond_dim, save_fig=True)
+    pbu.plot_magnetization_phase_diagram(nx, ny, output_folder, optimal_bond_dim, save_fig=True,
+                                       physics_params={'C6': C6, 'alpha': alpha, 'R': R, 'amp_R': amp_R})
     
 if __name__ == "__main__":
     main()

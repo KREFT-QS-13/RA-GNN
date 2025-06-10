@@ -94,7 +94,28 @@ def calulate_neel_magnetization(mag_per_site: np.ndarray, L:int=5) -> float:
 
     return magnetization
 
-def plot_magnetization_phase_diagram(nx, ny, path_to_folder, optimal_bond_dim, save_fig=False):
+def add_physics_textbox(ax, physics_params):
+    """
+    Add a text box with physics parameters to the plot.
+    
+    Args:
+        ax: matplotlib axis
+        physics_params: dict containing physics parameters (C6, alpha, R, amp_R)
+    """
+    print(physics_params.keys())
+    textstr = ' | '.join((
+        r'$C_6 = %.2f$' % (physics_params['C6'],),
+        r'$\alpha = %d$' % (physics_params['alpha'],),
+        r'$R_0\pm\delta R= %.2f\pm%.2f$' % (physics_params['R'], physics_params['amp_R']),
+    ))
+    
+    # Place text box in upper center
+    props = dict(boxstyle='round', facecolor='silver', alpha=0.6, edgecolor='black', linewidth=1)
+    ax.text(0.5, 0.98, textstr, transform=ax.transAxes, fontsize=10,
+            verticalalignment='top', horizontalalignment='center',
+            bbox=props)
+
+def plot_magnetization_phase_diagram(nx, ny, path_to_folder, optimal_bond_dim, save_fig=False, physics_params=None):
     """
     Plot the heat map phase diagram.
     """
@@ -102,6 +123,10 @@ def plot_magnetization_phase_diagram(nx, ny, path_to_folder, optimal_bond_dim, s
     
     fig, ax = plt.subplots(figsize=(8, 6)) 
     ax.plot(deltas, staggered_magnetization, label=f"Bond dim. = {optimal_bond_dim} with quick start")
+    
+    if physics_params:
+        add_physics_textbox(ax, physics_params)
+    
     ax.legend(fontsize=13)
     ax.set_title(f'Staggered magnetization of {nx}x{ny} square lattice', fontsize=16)
     ax.set_ylabel('Staggered Magnetization', fontsize=13)
@@ -115,18 +140,9 @@ def plot_magnetization_phase_diagram(nx, ny, path_to_folder, optimal_bond_dim, s
         plt.savefig(f"{path_to_folder}/imgs/magnetization_phase_diagram_{nx}x{ny}.png")
     plt.show()
 
-def plot_magnetization_heatmaps(nx, ny, path_to_folder,  optimal_bond_dim, lattice_unit=10, color_map="inferno"):
+def plot_magnetization_heatmaps(nx, ny, path_to_folder, optimal_bond_dim, lattice_unit=10, color_map="inferno", physics_params=None):
     """
     Create heatmaps of magnetization for different bond dimensions and deltas.
-    
-    Parameters:
-    -----------
-    nx, ny : int
-        Dimensions of the lattice
-    path_to_folder : str
-        Path to the folder containing NPZ files
-    lattice_unit : int
-        The the length between nearest neighbor spins
     """
     # Extract data from files
     deltas, staggered_magnetization = load_data_to_plot(path_to_folder, nx, ny, optimal_bond_dim)
@@ -149,6 +165,9 @@ def plot_magnetization_heatmaps(nx, ny, path_to_folder,  optimal_bond_dim, latti
                     vmax=1.0,
                     extent=[deltas[0], deltas[-1], 0, 1])
     
+    if physics_params:
+        add_physics_textbox(ax, physics_params)
+    
     # Customize axes
     ax.set_title(f'Bond dim = 150 with quick start', fontsize=16)
     ax.set_ylabel('Nominal dist.', fontsize=13)
@@ -165,8 +184,8 @@ def plot_magnetization_heatmaps(nx, ny, path_to_folder,  optimal_bond_dim, latti
     plt.tight_layout(rect=[0, 0, 0.9, 1])  # Adjust layout to make room for wider colorbar
     return fig
 
-
-def draw_plots_error_vs_maxdim(nx:int, ny:int, deltas:list[float], amp_R:float=0.0, filename:str="plot_err_vs_maxdim", vs:str="max_trunc_err", folder="Experiment_1"):
+def draw_plots_error_vs_maxdim(nx:int, ny:int, deltas:list[float], amp_R:float=0.0, filename:str="plot_err_vs_maxdim", 
+                              vs:str="max_trunc_err", folder="Experiment_1", physics_params=None):
     plt.figure(figsize=(11, 7))
     plt.style.use('ggplot') # 'seaborn-v0_8-darkgrid' , 'tableau-colorblind10'
     plt.xlabel("Bond dimension of DMRG", fontsize=18)
@@ -174,6 +193,9 @@ def draw_plots_error_vs_maxdim(nx:int, ny:int, deltas:list[float], amp_R:float=0
     plt.xticks(fontsize=16)
     plt.yticks(fontsize=16)
     plt.grid(True)
+
+    if physics_params:
+        add_physics_textbox(plt.gca(), physics_params)
 
     line_styles = ["-", "--", "-.", ":", "-", "--", "-.", ":", "-", "--", "-.", ":"]
 
