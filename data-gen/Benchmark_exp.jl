@@ -25,7 +25,8 @@ using .Latul
 export exp_TFI_DMRG, experiment_err_vs_bond_dim, experiment_magnetization, load_parameters, setup_lattice
 
 # C6 coefficient and perfect r = 7 um
-const C6 = 5420158.53
+# const C6 = 5420158.53
+# ^^ NOT IN USE ANYMORE, left for reference
 
 # ------------------------------------------------------------------------------------------------
 #
@@ -52,6 +53,8 @@ function load_parameters(json_file::String)
         Lattice spacing
     - amp_R : Float64
         Perturbation amplitude
+    - C6 : Float64
+        Interaction constant
     - deltas : Vector{Float64}
         Array of delta values
     - bond_dims : Vector{Int}
@@ -73,6 +76,9 @@ function load_parameters(json_file::String)
     R = lattice["R"]
     amp_R = lattice["amp_R"]
     
+    # Extract physics parameters
+    C6 = params["physics"]["C6"]
+    
     # Extract deltas
     deltas = params["deltas"]
     
@@ -91,7 +97,7 @@ function load_parameters(json_file::String)
     # Extract output parameters
     path_to_folder = params["output"]["folder"]
     
-    return nx, ny, alpha, R, amp_R, deltas, bond_dims, quick_start, ref_bond_dim, path_to_folder
+    return nx, ny, alpha, R, amp_R, C6, deltas, bond_dims, quick_start, ref_bond_dim, path_to_folder
 end
 
 # ------------------------------------------------------------------------------------------------
@@ -304,7 +310,7 @@ function exp2_TFI_DMRG(g::NamedGraph, edgs::Vector{Tuple{Tuple{Int64, Int64},Tup
 end
 
 
-function setup_lattice(nx::Int, ny::Int, R::Float64, amp_R::Float64, alpha::Int=6, path_to_folder::String="./Experiment_1")
+function setup_lattice(nx::Int, ny::Int, R::Float64, amp_R::Float64, C6::Float64, alpha::Int=6, path_to_folder::String="./Experiment_1")
     # Define the 2D grid as a named graph with vertices (i,j) where i is the row and j is the column
     # NOTE WE ARE IMPLICITING ORDERING THE MPS VERTICES AS A SNAKE THROUGH THE LATTICE. 
     # TO CHANGE THE ORDERING OF THE SITES (WHICH MIGHT HELP/HINDER THE SIMULATION) THEN WE NEED
@@ -366,6 +372,7 @@ function setup_lattice(nx::Int, ny::Int, R::Float64, amp_R::Float64, alpha::Int=
         "alpha" => alpha,
         "R" => R,
         "amp_R" => amp_R,
+        "C6" => C6,
         "Jij" => Jij,
         "distances" => distances,
     ))

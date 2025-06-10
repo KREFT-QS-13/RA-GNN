@@ -1,4 +1,7 @@
 {
+    "physics": {
+        "C6": 1.0
+    },
     "lattice": {
         "nx": 5,
         "ny": 5,

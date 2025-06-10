@@ -30,8 +30,12 @@ def load_plot_parameters(json_file: str) -> Tuple[Dict[str, Any], str]:
         'deltas': params['deltas'],
         'output_folder': params['output']['folder']
     }
+
+    bd_min = params['bond_dims']['start']
+    bd_max = params['bond_dims']['stop']
+    bd_step = params['bond_dims']['step']
     
-    return plot_params, plot_params['output_folder']
+    return plot_params, plot_params['output_folder'], bd_min, bd_max, bd_step
 
 def main():
     parser = argparse.ArgumentParser(description='Plot error vs bond dimension for TFIM')
@@ -42,7 +46,7 @@ def main():
     args = parser.parse_args()
 
     # Load parameters from JSON
-    plot_params, output_folder = load_plot_parameters(args.params)
+    plot_params, output_folder, bd_min, bd_max, bd_step = load_plot_parameters(args.params)
     nx, ny = plot_params['nx'], plot_params['ny']
     amp_R = plot_params['amp_R']
     deltas = plot_params['deltas']
@@ -53,8 +57,11 @@ def main():
     pbu.draw_plots_error_vs_maxdim(nx, ny, deltas, amp_R, vs=vs, folder=output_folder)
     
     # Step 2: Ask for optimal bond dimension
-    print("\nWhat is the optimal bond dimension (enter below and press enter): ")
+    print(f"\nWhat is the optimal bond dimension, from 1 to {bd_max} with step {bd_step} (enter below and press enter): ")
     optimal_bond_dim = int(input())
+    while optimal_bond_dim < bd_min or optimal_bond_dim > bd_max or optimal_bond_dim % bd_step != 0:
+        print(f"Invalid input. Please enter a number between {bd_min} and {bd_max} in steps of {bd_step} or 1.")
+        optimal_bond_dim = int(input())
 
     # Step 3: Plot magnetization phase diagram
     pbu.plot_magnetization_phase_diagram(nx, ny, output_folder, optimal_bond_dim, save_fig=True)

@@ -6,59 +6,12 @@ from matplotlib.colors import Normalize
 
 
 from typing import Dict, List, TypeVar, Tuple
-T = TypeVar('T', int, float)  # Define type variable for numeric types
 
-def load_dict_int_to_pairs(filename: str) -> Dict[int, List[List[T]]]:
-    """
-    Load and reconstruct a dictionary from a NumPy file where:
-    - Keys are integers
-    - Values are lists of two-element lists
-    
-    Args:
-        filename (str): Path to the .npz file
-        optimal_bond_dim (int): The optimal bond dimension to use for the plot
-    Returns:
-        Dict[int, List[List[T]]]: Reconstructed dictionary where:
-            - Keys are integers
-            - Values are lists of two-element lists
-            - T can be int or float depending on the saved data type
-    
-    Example:
-        >>> my_dict = load_dict_int_to_pairs("my_data.npz")
-        >>> print(my_dict)
-        {1: [[1.0, 2.0], [3.0, 4.0], [5.0, 6.0]],
-         2: [[7.0, 8.0], [9.0, 10.0]],
-         3: [[11.0, 12.0], [13.0, 14.0], [15.0, 16.0]]}
-    """
-    try:
-        # Load the data
-        data = np.load(filename)
-        
-        # Get the keys and values
-        keys = data["keys"]
-        values = data["values"]
-        
-        # Reconstruct the dictionary
-        reconstructed_dict = {}
-        for i, key in enumerate(keys):
-            # Convert each row back to a list
-            # Use tolist() to convert numpy arrays to Python lists
-            reconstructed_dict[int(key)] = [row.tolist() for row in values[i]]
-
-        return reconstructed_dict
-        
-    except FileNotFoundError:
-        raise FileNotFoundError(f"The file {filename} was not found.")
-    except KeyError as e:
-        raise KeyError(f"Expected keys 'keys' and 'values' in the .npz file. Missing: {e}")
-    except Exception as e:
-        raise Exception(f"Error loading the file: {str(e)}")
-
-def load_nested_dict_int_to_pairs(filename: str) -> Tuple[Dict[int, Dict[int, float]], Dict[int, Dict[int, List[float]]]]:
+def load_nested_dict_int_to_pairs(filename: str) -> Tuple[Dict[int, Dict[float, float]], Dict[int, Dict[float, List[float]]]]:
     """
     Load and reconstruct nested dictionaries from a NumPy file where:
     - Outer keys are integers (bond dimensions)
-    - Inner keys are integers (deltas)
+    - Inner keys are floats (deltas)
     - Values are either floats (for staggered magnetization) or lists of floats (for magnetization per site)
     
     Args:
@@ -66,8 +19,8 @@ def load_nested_dict_int_to_pairs(filename: str) -> Tuple[Dict[int, Dict[int, fl
         
     Returns:
         Tuple containing:
-        - Dict[int, Dict[int, float]]: For staggered magnetization
-        - Dict[int, Dict[int, List[float]]]: For magnetization per site
+        - Dict[int, Dict[float, float]]: For staggered magnetization
+        - Dict[int, Dict[float, List[float]]]: For magnetization per site
     """
     try:
         # Load the data
@@ -84,10 +37,10 @@ def load_nested_dict_int_to_pairs(filename: str) -> Tuple[Dict[int, Dict[int, fl
             inner_dict = {}
             if len(values.shape) == 2:  # For staggered magnetization (2D array)
                 for j, inner_key in enumerate(inner_keys):
-                    inner_dict[int(inner_key)] = float(values[i, j])
+                    inner_dict[float(inner_key)] = float(values[i, j])
             else:  # For magnetization per site (3D array)
                 for j, inner_key in enumerate(inner_keys):
-                    inner_dict[int(inner_key)] = values[i][:, j].tolist()
+                    inner_dict[float(inner_key)] = values[i][:, j].tolist()
             reconstructed_dict[int(outer_key)] = inner_dict
 
         return reconstructed_dict
@@ -154,6 +107,7 @@ def plot_magnetization_phase_diagram(nx, ny, path_to_folder, optimal_bond_dim, s
     ax.set_ylabel('Staggered Magnetization', fontsize=13)
     ax.set_xlabel(r'Magnetic field coefficient $\Omega$', fontsize=13)
     ax.tick_params(axis='both', which='major', labelsize=11)
+    print(deltas)
     ax.set_xticks(deltas)
     plt.tight_layout()
 
