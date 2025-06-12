@@ -33,6 +33,7 @@ println("-"^20)
 # create a dictionary to store the results
 staggered_magnetization = OrderedDict{Int, OrderedDict{Float64, Float64}}(bd => OrderedDict{Float64, Float64}(md => 0.0 for md in deltas) for bd in bond_dims)
 magnetization_per_site = OrderedDict{Int, OrderedDict{Float64, Vector{Float64}}}(bd => OrderedDict{Float64, Vector{Float64}}(md => Float64[] for md in deltas) for bd in bond_dims)
+time_taken = OrderedDict{Int, OrderedDict{Float64, Float64}}(bd => OrderedDict{Float64, Float64}(md => 0.0 for md in deltas) for bd in bond_dims)
 
 println("Setting up lattice for all experiments:")
 lattice_params = Benchmark_exp.setup_lattice(nx, ny, R, amp_R, C6, init_state, alpha, path_to_folder)
@@ -41,11 +42,12 @@ println("Lattice ptns: $(lattice_params[end])")
 println("-"^20)
 for d in deltas
     println("Running experiment for delta = $d")
-    mag_per_site, mag_per_bond_dim = Benchmark_exp.experiment_err_vs_bond_dim(nx, ny, lattice_params, d, init_state, bond_dims, alpha, quick_start, ref_bond_dim, path_to_folder)
+    mag_per_site, mag_per_bond_dim, time_taken = Benchmark_exp.experiment_err_vs_bond_dim(nx, ny, lattice_params, d, init_state, bond_dims, alpha, quick_start, ref_bond_dim, path_to_folder)
     
     for bd in bond_dims
         staggered_magnetization[bd][d] = mag_per_bond_dim[bd]
         magnetization_per_site[bd][d] = mag_per_site[bd]
+        time_taken[bd][d] = time_taken[bd]
     end
     println("Done for delta = $d")
     # println("Magnetization per site:\n $mag_per_site")
@@ -59,6 +61,12 @@ println("Inner keys: $(keys(staggered_magnetization[1]))")
 filename = joinpath(path_to_folder, "staggered_magnetization_init=$(init_state).npz")
 Benchmark_exp.save_dict_int_to_pairs(filename, staggered_magnetization)
 println("Saved staggered magnetization to: $filename")
+
+# Save the time taken data
+filename = joinpath(path_to_folder, "time_taken_init=$(init_state).npz")
+Benchmark_exp.save_dict_int_to_pairs(filename, time_taken)
+println("Saved time taken to: $filename")
+
 
 # TODO: Fix magnetization_per_site so it will work as staggered_magnetization and be saved
 # Benchmark_exp.save_dict_int_to_pairs(path_to_folder * "/magnetization_per_site.npz", magnetization_per_site)

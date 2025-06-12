@@ -249,6 +249,8 @@ function exp_TFI_DMRG(g::NamedGraph, edgs::Vector{Tuple{Tuple{Int64, Int64},Tupl
 
     list_magnetization_per_bond_dim = OrderedDict(md=>0.0 for md in bonds_dims) 
     list_magnetization_per_site = OrderedDict(md=>Float64[] for md in bonds_dims)  
+    
+    time_taken = OrderedDict(md=>0.0 for md in bonds_dims)
 
     for md in bonds_dims
         delta = hs[first(vertices(g))]
@@ -262,9 +264,11 @@ function exp_TFI_DMRG(g::NamedGraph, edgs::Vector{Tuple{Tuple{Int64, Int64},Tupl
         else
             maxdim!(sweeps, md)
         end
-
-        ψ0 = ITensors.randomMPS(sites, init_state; linkdims = 2)
-        E, ψ0 = dmrg(H, ψ0, sweeps; observer=obs)
+        
+        start_time = time()
+        E, psi = dmrg(H, ψ0, sweeps; observer=obs)
+        time_taken[md] = time() - start_time
+        println("Time taken: $(time_taken[md]) seconds")
 
         error = abs(E - E_ref)  # Compute absolute error
         push!(errors, error)  # Store the error
@@ -274,7 +278,7 @@ function exp_TFI_DMRG(g::NamedGraph, edgs::Vector{Tuple{Tuple{Int64, Int64},Tupl
         println("-"^20*"\n")
 
         # Calculate magnetization for this bond dimension
-        magnetization_dict = Dict(zip(vertices(g), expect(ψ0, "Z")))
+        magnetization_dict = Dict(zip(vertices(g), expect(psi, "Z")))
         Mg = [magnetization_dict[Julia_Python_node_mapping[node]] for node in nodes]
         
         staggered_magnetization = calculate_staggered_magnetization(Mg, size_L)
@@ -288,7 +292,7 @@ function exp_TFI_DMRG(g::NamedGraph, edgs::Vector{Tuple{Tuple{Int64, Int64},Tupl
     end
 
     println("Finished.")
-    return errors, bonds_dims, max_truncation_errors, list_magnetization_per_site, list_magnetization_per_bond_dim
+    return errors, bonds_dims, max_truncation_errors, list_magnetization_per_site, list_magnetization_per_bond_dim, time_taken
 end
 
 function exp2_TFI_DMRG(g::NamedGraph, edgs::Vector{Tuple{Tuple{Int64, Int64},Tuple{Int64,Int64}}}, sites; nsweeps=20, hs::Union{Nothing,Dict} = nothing, Jzzs::Vector{Float64})
@@ -450,7 +454,7 @@ function experiment_err_vs_bond_dim(nx::Int, ny::Int, lattice_params, hx::Float6
                                 quick_start=quick_start,
                                 ref_bond_dim=ref_bond_dim)
                                 
-    errors, bonds_dims, max_truncation_errors, list_magnetization_per_site, list_magnetization_per_bond_dim = results
+    errors, bonds_dims, max_truncation_errors, list_magnetization_per_site, list_magnetization_per_bond_dim, time_taken = results
     
     println("Finished DMRG experiment.")
     println("-"^20*"\n")
@@ -464,7 +468,7 @@ function experiment_err_vs_bond_dim(nx::Int, ny::Int, lattice_params, hx::Float6
     ))
 
 
-    return list_magnetization_per_site, list_magnetization_per_bond_dim
+    return list_magnetization_per_site, list_magnetization_per_bond_dim, time_taken
 end
 
 
