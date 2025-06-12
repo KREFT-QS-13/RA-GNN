@@ -55,6 +55,8 @@ function load_parameters(json_file::String)
         Perturbation amplitude
     - C6 : Float64
         Interaction constant
+    - init_state : String
+        Initial state
     - deltas : Vector{Float64}
         Array of delta values
     - bond_dims : Vector{Int}
@@ -78,6 +80,7 @@ function load_parameters(json_file::String)
     
     # Extract physics parameters
     C6 = params["physics"]["C6"]
+    init_state = params["physics"]["init_state"]
     
     # Extract deltas
     deltas = params["deltas"]
@@ -97,7 +100,7 @@ function load_parameters(json_file::String)
     # Extract output parameters
     path_to_folder = params["output"]["folder"]
     
-    return nx, ny, alpha, R, amp_R, C6, deltas, bond_dims, quick_start, ref_bond_dim, path_to_folder
+    return nx, ny, alpha, R, amp_R, C6, init_state, deltas, bond_dims, quick_start, ref_bond_dim, path_to_folder
 end
 
 # ------------------------------------------------------------------------------------------------
@@ -183,10 +186,27 @@ function save_dict_int_to_pairs(filename::String, dict::OrderedDict{Int, Ordered
     ))
 end
 
+function get_output_path(base_path::String, alpha::Int, nx::Int, ny::Int)::String
+    """
+    Create and return the output path with alpha and size folders.
+    
+    Args:
+        base_path: Base output path from JSON
+        alpha: Alpha value for the folder name
+        nx, ny: Lattice dimensions for the size folder
+        
+    Returns:
+        Full path including alpha and size folders
+    """
+    alpha_path = joinpath(base_path, "alpha_$(alpha)")
+    size_path = joinpath(alpha_path, "$(nx)x$(ny)")
+    mkpath(size_path)
+    return size_path
+end
 
 function exp_TFI_DMRG(g::NamedGraph, edgs::Vector{Tuple{Tuple{Int64, Int64},Tuple{Int64,Int64}}}, 
                       sites; nsweeps=20, hs::Union{Nothing,Dict} = nothing, Jzzs::Vector{Float64}, 
-                      bonds_dims::Vector{Int}=collect(range(5, 100, step=5)), ref_bond_dim::Int=200, quick_start::Bool=true)
+                      init_state::String, bonds_dims::Vector{Int}=collect(range(5, 100, step=5)), ref_bond_dim::Int=200, quick_start::Bool=true)
     L = length(vertices(g))
     size_L = trunc(Int, sqrt(L))
     if hs === nothing
@@ -200,9 +220,16 @@ function exp_TFI_DMRG(g::NamedGraph, edgs::Vector{Tuple{Tuple{Int64, Int64},Tupl
     H = HTFI(g, hs, Jzzs, edgs, sites)
 
     # Initial state for DMRG routine (all spins pointing up)
-    init_state = ["Up" for _ in 1:L]
-    ψ0 = ITensors.randomMPS(sites, init_state; linkdims = 2)
 
+    if init_state == "FM"
+        init_state = ["Up" for _ in 1:L]
+    elseif init_state == "AFM"
+        init_state = [i%2 == 0 ? "Up" : "Dn" for i in 1:L]
+    else
+        error("Invalid initial state: $init_state. Only FM and AFM are supported.")
+    end
+    println("Initial state: $(init_state)")
+    
     println("Starting DMRG for reference energy...")
     sweeps = Sweeps(nsweeps)
     cutoff!(sweeps, 1E-18)
@@ -211,7 +238,8 @@ function exp_TFI_DMRG(g::NamedGraph, edgs::Vector{Tuple{Tuple{Int64, Int64},Tupl
     else
         maxdim!(sweeps, ref_bond_dim)
     end
-
+    
+    ψ0 = ITensors.randomMPS(sites, init_state; linkdims = 2)
     E_ref, _ = dmrg(H, ψ0, sweeps)
     println("Reference energy (high precision) = ", E_ref)
 
@@ -234,7 +262,8 @@ function exp_TFI_DMRG(g::NamedGraph, edgs::Vector{Tuple{Tuple{Int64, Int64},Tupl
         else
             maxdim!(sweeps, md)
         end
-        
+
+        ψ0 = ITensors.randomMPS(sites, init_state; linkdims = 2)
         E, ψ0 = dmrg(H, ψ0, sweeps; observer=obs)
 
         error = abs(E - E_ref)  # Compute absolute error
@@ -310,7 +339,10 @@ function exp2_TFI_DMRG(g::NamedGraph, edgs::Vector{Tuple{Tuple{Int64, Int64},Tup
 end
 
 
-function setup_lattice(nx::Int, ny::Int, R::Float64, amp_R::Float64, C6::Float64, alpha::Int=6, path_to_folder::String="./Experiment_1")
+function setup_lattice(nx::Int, ny::Int, R::Float64, amp_R::Float64, C6::Float64, init_state::String="FM", alpha::Int=6, path_to_folder::String="./Experiment_1")
+    # Remove redundant path creation since it's done in main_benchmark.jl
+    # path_to_folder = get_output_path(path_to_folder, alpha, nx, ny)
+    
     # Define the 2D grid as a named graph with vertices (i,j) where i is the row and j is the column
     # NOTE WE ARE IMPLICITING ORDERING THE MPS VERTICES AS A SNAKE THROUGH THE LATTICE. 
     # TO CHANGE THE ORDERING OF THE SITES (WHICH MIGHT HELP/HINDER THE SIMULATION) THEN WE NEED
@@ -368,7 +400,7 @@ function setup_lattice(nx::Int, ny::Int, R::Float64, amp_R::Float64, C6::Float64
     distances = distances[mask]
     Jij = C6./(distances.^alpha)
 
-    npzwrite(joinpath(path_to_folder, "lattice_$(nx)x$(ny).npz"), Dict(
+    npzwrite(joinpath(path_to_folder, "lattice_$(nx)x$(ny)_R=$(R)_pm_$(amp_R)_init=$(init_state).npz"), Dict(
         "alpha" => alpha,
         "R" => R,
         "amp_R" => amp_R,
@@ -381,20 +413,19 @@ function setup_lattice(nx::Int, ny::Int, R::Float64, amp_R::Float64, C6::Float64
 end
 
 
-function experiment_err_vs_bond_dim(nx::Int, ny::Int, lattice_params, hx::Float64, bonds_dims::Vector{Int}, alpha::Int=6, quick_start::Bool=true, ref_bond_dim::Int=200, path_to_folder::String="./Experiment_1")
-    # Create the directory structure first
-    size_dir = joinpath(path_to_folder, "$(nx)x$(ny)")
-    mkpath(size_dir)
+function experiment_err_vs_bond_dim(nx::Int, ny::Int, lattice_params, hx::Float64, init_state::String, bonds_dims::Vector{Int}, alpha::Int=6, quick_start::Bool=true, ref_bond_dim::Int=200, path_to_folder::String="./Experiment_1")
+    # Remove redundant path creation since it's done in main_benchmark.jl
+    # path_to_folder = get_output_path(path_to_folder, alpha, nx, ny)
     
     _, amp_R, g, edges_array, sites, Jij, num_vertices, _ = lattice_params
 
-    # Create the file name
+    # Create the file name with init_state included
     if amp_R != 0.0
-        filename = joinpath(size_dir, "data_err_vs_maxdim_$(nx)x$(ny)_delta=$(hx)_amp_R=$(amp_R).npz")
-        filename_mag = joinpath(size_dir, "Mg_$(nx)x$(ny)_delta=$(hx)_amp_R=$(amp_R).npz")
+        filename = joinpath(path_to_folder, "data_err_vs_maxdim_delta=$(hx)_amp_R=$(amp_R)_init=$(init_state).npz")
+        filename_mag = joinpath(path_to_folder, "Mg_init=$(init_state)_delta=$(hx)_amp_R=$(amp_R).npz")
     else
-        filename = joinpath(size_dir, "data_err_vs_maxdim_$(nx)x$(ny)_delta=$(hx).npz")
-        filename_mag = joinpath(size_dir, "Mg_$(nx)x$(ny)_delta=$(hx).npz")
+        filename = joinpath(path_to_folder, "data_err_vs_maxdim_delta=$(hx)_init=$(init_state).npz")
+        filename_mag = joinpath(path_to_folder, "Mg_init=$(init_state)_delta=$(hx).npz")
     end
 
     println("Experiment 1: Error vs Bond Dimension")
@@ -414,6 +445,7 @@ function experiment_err_vs_bond_dim(nx::Int, ny::Int, lattice_params, hx::Float6
                                 sites; 
                                 hs = hhh, 
                                 Jzzs = Jij, 
+                                init_state=init_state,
                                 bonds_dims=bonds_dims, 
                                 quick_start=quick_start,
                                 ref_bond_dim=ref_bond_dim)
@@ -436,14 +468,13 @@ function experiment_err_vs_bond_dim(nx::Int, ny::Int, lattice_params, hx::Float6
 end
 
 
-function experiment_magnetization(deltas, nx::Int, ny::Int, R::Float64, amp_R::Float64, alpha::Int=6, path_to_folder::String="./Experiment_1", max_bond_dim::Int=200)
+function experiment_magnetization(deltas, nx::Int, ny::Int, R::Float64, amp_R::Float64, alpha::Int=6, path_to_folder::String="./Experiment_1", max_bond_dim::Int=200, init_state::String="FM")
+    # Remove redundant path creation since it's done in main_benchmark.jl
+    # path_to_folder = get_output_path(path_to_folder, alpha, nx, ny)
+    
     # Initialize dictionary with Float64 values instead of arrays
     magnetization = OrderedDict(delta=>0.0 for delta in sort(deltas))
     println("Initial magnetization dictionary: $magnetization")
-    
-    # Create the directory structure first
-    size_dir = joinpath(path_to_folder, "$(nx)x$(ny)")
-    mkpath(size_dir)
     
     for hx in deltas       
         println("Experiment 2: Magnetization - Phase Transition")
@@ -524,9 +555,9 @@ function experiment_magnetization(deltas, nx::Int, ny::Int, R::Float64, amp_R::F
     deltas_min, deltas_max = minimum(deltas), maximum(deltas)
     deltas_size =  length(deltas)
     if amp_R != 0.0
-        filename_mag = joinpath(size_dir, "Mg_$(nx)x$(ny)_$(deltas_min)_$(deltas_max)_$(deltas_size)_amp_R=$(amp_R).npz")
+        filename_mag = joinpath(path_to_folder, "Mg_init=$(init_state)_delta_$(deltas_min)_$(deltas_max)_$(deltas_size)_amp_R=$(amp_R).npz")
     else
-        filename_mag = joinpath(size_dir, "Mg_$(nx)x$(ny)_delta_$(deltas_min)_$(deltas_max)_$(deltas_size).npz")
+        filename_mag = joinpath(path_to_folder, "Mg_init=$(init_state)_delta_$(deltas_min)_$(deltas_max)_$(deltas_size).npz")
     end
     println("Saving results to: $filename_mag")
 

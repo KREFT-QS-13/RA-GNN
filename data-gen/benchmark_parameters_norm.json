@@ -1,6 +1,7 @@
 {
     "physics": {
-        "C6": 1.0
+        "C6": 1.0,
+        "init_state": "FM"
     },
     "lattice": {
         "nx": 5,
