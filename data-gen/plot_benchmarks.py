@@ -45,6 +45,7 @@ def load_plot_parameters(json_file: str) -> Tuple[Dict[str, Any], str]:
         'alpha': params['lattice']['alpha'],
         'R': params['lattice']['R'],
         'C6': params['physics']['C6'],
+        'init_state': params['physics']['init_state'],
         'deltas': params['deltas'],
         'output_folder': get_output_path(params['output']['folder'], params['lattice']['alpha'])
     }
@@ -73,11 +74,13 @@ def main():
     deltas = plot_params['deltas']
     vs = args.vs 
     init_state = plot_params.get('init_state', 'FM')  # Get init_state from parameters, default to 'FM'
-
+    
+    print(f"Plotting for: size = {nx}x{ny} with init_state = {init_state}")
+    print(f"Other parameters: C6 = {C6}, alpha = {alpha}, R = {R}, amp_R = {amp_R}")
+    print(f"Deltas: {deltas}")
     output_folder = os.path.join(output_folder, f"{nx}x{ny}")
 
     # Step 1: Plot error vs bond dimension
-    print(f"Plotting for: size = {nx}x{ny}, deltas = {deltas}, init_state = {init_state}")
     pbu.draw_plots_error_vs_maxdim(nx, ny, deltas, amp_R, vs=vs, folder=output_folder, 
                                   physics_params={'C6': C6, 'alpha': alpha, 'R': R, 'amp_R': amp_R},
                                   init_state=init_state)

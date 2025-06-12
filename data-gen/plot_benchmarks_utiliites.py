@@ -52,7 +52,7 @@ def load_nested_dict_int_to_pairs(filename: str) -> Tuple[Dict[int, Dict[float, 
     except Exception as e:
         raise Exception(f"Error loading the file: {str(e)}")
 
-def load_data_to_plot(path_to_folder: str, nx: int, ny: int, optimal_bond_dim: int) -> Tuple[List[float], List[float]]:
+def load_data_to_plot(path_to_folder: str, init_state: str, optimal_bond_dim: int) -> Tuple[List[float], List[float]]:
     """
     Load and reconstruct data for plotting from a NumPy file.
     
@@ -67,7 +67,7 @@ def load_data_to_plot(path_to_folder: str, nx: int, ny: int, optimal_bond_dim: i
             - List of staggered magnetizations
     """
     # Note: path_to_folder now includes the alpha folder
-    filename = os.path.join(path_to_folder, f"staggered_magnetization.npz")
+    filename = os.path.join(path_to_folder, f"staggered_magnetization_init={init_state}.npz")
 
     # Load the nested dictionary
     data_dict = load_nested_dict_int_to_pairs(filename)
@@ -102,7 +102,6 @@ def add_physics_textbox(ax, physics_params):
         ax: matplotlib axis
         physics_params: dict containing physics parameters (C6, alpha, R, amp_R)
     """
-    print(physics_params.keys())
     textstr = ' | '.join((
         r'$C_6 = %.2f$' % (physics_params['C6'],),
         r'$\alpha = %d$' % (physics_params['alpha'],),
@@ -110,7 +109,7 @@ def add_physics_textbox(ax, physics_params):
     ))
     
     # Place text box in upper center
-    props = dict(boxstyle='round', facecolor='white', alpha=0.2, edgecolor='black', linewidth=1)
+    props = dict(boxstyle='round', facecolor='white', alpha=0.6, edgecolor='black', linewidth=1)
     ax.text(0.5, 0.98, textstr, transform=ax.transAxes, fontsize=11,
             verticalalignment='top', horizontalalignment='center',
             bbox=props)
@@ -119,13 +118,7 @@ def plot_magnetization_phase_diagram(nx, ny, path_to_folder, optimal_bond_dim, s
     """
     Plot the heat map phase diagram.
     """
-    # Note: path_to_folder now includes the alpha folder
-    filename = os.path.join(path_to_folder, f"staggered_magnetization_init={init_state}.npz")
-    
-    # Load the nested dictionary
-    data_dict = load_nested_dict_int_to_pairs(filename)
-    
-    deltas, staggered_magnetization = load_data_to_plot(path_to_folder, nx, ny, optimal_bond_dim)
+    deltas, staggered_magnetization = load_data_to_plot(path_to_folder, init_state, optimal_bond_dim)
     
     fig, ax = plt.subplots(figsize=(8, 6)) 
     ax.plot(deltas, staggered_magnetization, label=f"Bond dim. = {optimal_bond_dim} with quick start")
@@ -133,12 +126,14 @@ def plot_magnetization_phase_diagram(nx, ny, path_to_folder, optimal_bond_dim, s
     if physics_params:
         add_physics_textbox(ax, physics_params)
     
-    ax.legend(fontsize=12)
+    ax.legend(fontsize=10, loc="best")
     ax.set_title(f'Staggered magnetization of {nx}x{ny} square lattice (init={init_state})', fontsize=16)
     ax.set_ylabel('Staggered Magnetization', fontsize=13)
     ax.set_xlabel(r'Magnetic field coefficient $\Omega$', fontsize=13)
-    ax.tick_params(axis='both', which='major', labelsize=11)
+    ax.tick_params(axis='both', which='major', labelsize=9)
     print(deltas)
+    plt.grid(True)
+    # ax.set_xticks(np.linspace(deltas[0], deltas[-1], 5))
     ax.set_xticks(deltas)
     plt.tight_layout()
 
@@ -198,7 +193,7 @@ def draw_plots_error_vs_maxdim(nx:int, ny:int, deltas:list[float], amp_R:float=0
     # Create figure with two subplots
     plt.style.use('tableau-colorblind10') # 'seaborn-v0_8-darkgrid' , 'tableau-colorblind10'
 
-    fig = plt.figure(figsize=(12, 12))  # Increased height to accommodate both plots
+    fig = plt.figure(figsize=(12, 8))  # Increased height to accommodate both plots
     gs = plt.GridSpec(2, 1, height_ratios=[4, 1], hspace=0.025)  # 4:1 height ratio, small gap
     ax1 = fig.add_subplot(gs[0])  # Main plot
     ax2 = fig.add_subplot(gs[1], sharex=ax1)  # Small plot below, sharing x-axis
@@ -292,6 +287,9 @@ def draw_plots_error_vs_maxdim(nx:int, ny:int, deltas:list[float], amp_R:float=0
     maxdims = data["maxdims"]
     vs_value = data["errors"] if vs == "error" else data["max_truncation_errors"]
     print(vs_value)
+    if all(vs_value == 0.0):
+        ax2.set_yscale("linear")
+    
     ax2.plot(maxdims, vs_value,
             label=f"$\delta$ = {d}",
             linestyle=line_styles[0],
