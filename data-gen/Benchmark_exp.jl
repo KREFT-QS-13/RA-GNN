@@ -65,6 +65,8 @@ function load_parameters(json_file::String)
         Whether to use quick start for DMRG
     - ref_bond_dim : Int
         Reference bond dimension
+    - init_linkdims : Int
+        Initial link dimensions for MPS
     - path_to_folder : String
         Output folder path
     """
@@ -79,8 +81,10 @@ function load_parameters(json_file::String)
     amp_R = lattice["amp_R"]
     
     # Extract physics parameters
-    C6 = params["physics"]["C6"]
-    init_state = params["physics"]["init_state"]
+    physics = params["physics"]
+    C6 = physics["C6"]
+    init_state = physics["init_state"]
+    init_linkdims = physics["init_linkdims"]
     
     # Extract deltas
     deltas = params["deltas"]
@@ -92,6 +96,9 @@ function load_parameters(json_file::String)
         pushfirst!(bond_dims, 1)
     end
     
+    # Remove any 0 values from bond_dims
+    bond_dims = filter(x -> x != 0, bond_dims)
+
     # Extract DMRG parameters
     dmrg_params = params["dmrg"]
     quick_start = dmrg_params["quick_start"]
@@ -100,7 +107,7 @@ function load_parameters(json_file::String)
     # Extract output parameters
     path_to_folder = params["output"]["folder"]
     
-    return nx, ny, alpha, R, amp_R, C6, init_state, deltas, bond_dims, quick_start, ref_bond_dim, path_to_folder
+    return nx, ny, alpha, R, amp_R, C6, init_state, deltas, bond_dims, quick_start, ref_bond_dim, init_linkdims, path_to_folder
 end
 
 # ------------------------------------------------------------------------------------------------
@@ -206,7 +213,8 @@ end
 
 function exp_TFI_DMRG(g::NamedGraph, edgs::Vector{Tuple{Tuple{Int64, Int64},Tuple{Int64,Int64}}}, 
                       sites; nsweeps=20, hs::Union{Nothing,Dict} = nothing, Jzzs::Vector{Float64}, 
-                      init_state::String, bonds_dims::Vector{Int}=collect(range(5, 100, step=5)), ref_bond_dim::Int=200, quick_start::Bool=true)
+                      init_state::String, bonds_dims::Vector{Int}=collect(range(5, 100, step=5)), 
+                      ref_bond_dim::Int=200, quick_start::Bool=true, init_linkdims::Int=100)
     L = length(vertices(g))
     size_L = trunc(Int, sqrt(L))
     if hs === nothing
@@ -232,14 +240,14 @@ function exp_TFI_DMRG(g::NamedGraph, edgs::Vector{Tuple{Tuple{Int64, Int64},Tupl
     
     println("Starting DMRG for reference energy...")
     sweeps = Sweeps(nsweeps)
-    cutoff!(sweeps, 1E-18)
+    cutoff!(sweeps, 1E-21)
     if quick_start
         maxdim!(sweeps, Tuple(min(2^(floor(Int64, 0.5*i)), ref_bond_dim)  for i in 1:nsweeps)...)
     else
         maxdim!(sweeps, ref_bond_dim)
     end
     
-    ψ0 = ITensors.randomMPS(sites, init_state; linkdims = 2)
+    ψ0 = ITensors.randomMPS(sites, init_state; linkdims = init_linkdims)
     E_ref, _ = dmrg(H, ψ0, sweeps)
     println("Reference energy (high precision) = ", E_ref)
 
@@ -250,7 +258,7 @@ function exp_TFI_DMRG(g::NamedGraph, edgs::Vector{Tuple{Tuple{Int64, Int64},Tupl
     list_magnetization_per_bond_dim = OrderedDict(md=>0.0 for md in bonds_dims) 
     list_magnetization_per_site = OrderedDict(md=>Float64[] for md in bonds_dims)  
     
-    time_taken = OrderedDict(md=>0.0 for md in bonds_dims)
+    drmg_time = OrderedDict(md=>0.0 for md in bonds_dims)
 
     for md in bonds_dims
         delta = hs[first(vertices(g))]
@@ -266,9 +274,11 @@ function exp_TFI_DMRG(g::NamedGraph, edgs::Vector{Tuple{Tuple{Int64, Int64},Tupl
         end
         
         start_time = time()
+
         E, psi = dmrg(H, ψ0, sweeps; observer=obs)
-        time_taken[md] = time() - start_time
-        println("Time taken: $(time_taken[md]) seconds")
+
+        drmg_time[md] = time() - start_time
+        println("Time taken: $(drmg_time[md]) seconds")
 
         error = abs(E - E_ref)  # Compute absolute error
         push!(errors, error)  # Store the error
@@ -292,7 +302,7 @@ function exp_TFI_DMRG(g::NamedGraph, edgs::Vector{Tuple{Tuple{Int64, Int64},Tupl
     end
 
     println("Finished.")
-    return errors, bonds_dims, max_truncation_errors, list_magnetization_per_site, list_magnetization_per_bond_dim, time_taken
+    return errors, bonds_dims, max_truncation_errors, list_magnetization_per_site, list_magnetization_per_bond_dim, drmg_time
 end
 
 function exp2_TFI_DMRG(g::NamedGraph, edgs::Vector{Tuple{Tuple{Int64, Int64},Tuple{Int64,Int64}}}, sites; nsweeps=20, hs::Union{Nothing,Dict} = nothing, Jzzs::Vector{Float64})
@@ -343,7 +353,7 @@ function exp2_TFI_DMRG(g::NamedGraph, edgs::Vector{Tuple{Tuple{Int64, Int64},Tup
 end
 
 
-function setup_lattice(nx::Int, ny::Int, R::Float64, amp_R::Float64, C6::Float64, init_state::String="FM", alpha::Int=6, path_to_folder::String="./Experiment_1")
+function setup_lattice(nx::Int, ny::Int, R::Float64, amp_R::Float64, C6::Float64, init_state::String="FM", init_linkdims::Int=100, alpha::Int=6, path_to_folder::String="./Experiment_1")
     # Remove redundant path creation since it's done in main_benchmark.jl
     # path_to_folder = get_output_path(path_to_folder, alpha, nx, ny)
     
@@ -381,8 +391,7 @@ function setup_lattice(nx::Int, ny::Int, R::Float64, amp_R::Float64, C6::Float64
     distances_nom = distances_nom[mask]
     edges_array = edges_array[mask]
 
-    
-    # Get the indices for the MPS. Assume no conservation laws
+    # Get the indices for the MPS
     sites = siteinds("S=1/2", length(vertices(g)); conserve_qns=false)
 
     println("The number of available threads is : $(Sys.CPU_THREADS)")
@@ -404,38 +413,41 @@ function setup_lattice(nx::Int, ny::Int, R::Float64, amp_R::Float64, C6::Float64
     distances = distances[mask]
     Jij = C6./(distances.^alpha)
 
-    npzwrite(joinpath(path_to_folder, "lattice_$(nx)x$(ny)_R=$(R)_pm_$(amp_R)_init=$(init_state).npz"), Dict(
+    # Convert string to array of characters for NPZ storage
+    init_state_map = Dict("FM" => 1, "AFM" => 0)[init_state]
+    
+    npzwrite(joinpath(path_to_folder, "lattice_$(nx)x$(ny)_R=$(R)_pm_$(amp_R)_init=$(init_state)_initdim=$(init_linkdims).npz"), Dict(
         "alpha" => alpha,
         "R" => R,
         "amp_R" => amp_R,
         "C6" => C6,
         "Jij" => Jij,
         "distances" => distances,
+        "init_linkdims" => init_linkdims,
+        "init_state" => init_state_map  
     ))
 
     return R, amp_R, g, edges_array, sites, Jij, num_vertices, pstns
 end
 
 
-function experiment_err_vs_bond_dim(nx::Int, ny::Int, lattice_params, hx::Float64, init_state::String, bonds_dims::Vector{Int}, alpha::Int=6, quick_start::Bool=true, ref_bond_dim::Int=200, path_to_folder::String="./Experiment_1")
+function experiment_err_vs_bond_dim(nx::Int, ny::Int, lattice_params, hx::Float64, init_state::String, bonds_dims::Vector{Int}, alpha::Int=6, quick_start::Bool=true, ref_bond_dim::Int=200, init_linkdims::Int=100, path_to_folder::String="./Experiment_1")
     # Remove redundant path creation since it's done in main_benchmark.jl
     # path_to_folder = get_output_path(path_to_folder, alpha, nx, ny)
     
     _, amp_R, g, edges_array, sites, Jij, num_vertices, _ = lattice_params
 
-    # Create the file name with init_state included
+    # Create the file name with init_state and init_linkdims included
     if amp_R != 0.0
-        filename = joinpath(path_to_folder, "data_err_vs_maxdim_delta=$(hx)_amp_R=$(amp_R)_init=$(init_state).npz")
-        filename_mag = joinpath(path_to_folder, "Mg_init=$(init_state)_delta=$(hx)_amp_R=$(amp_R).npz")
+        filename = joinpath(path_to_folder, "data_err_vs_maxdim_delta=$(hx)_amp_R=$(amp_R)_init=$(init_state)_initdim=$(init_linkdims).npz")
+        filename_mag = joinpath(path_to_folder, "Mg_init=$(init_state)_delta=$(hx)_amp_R=$(amp_R)_initdim=$(init_linkdims).npz")
     else
-        filename = joinpath(path_to_folder, "data_err_vs_maxdim_delta=$(hx)_init=$(init_state).npz")
-        filename_mag = joinpath(path_to_folder, "Mg_init=$(init_state)_delta=$(hx).npz")
+        filename = joinpath(path_to_folder, "data_err_vs_maxdim_delta=$(hx)_init=$(init_state)_initdim=$(init_linkdims).npz")
+        filename_mag = joinpath(path_to_folder, "Mg_init=$(init_state)_delta=$(hx)_initdim=$(init_linkdims).npz")
     end
 
     println("Experiment 1: Error vs Bond Dimension")
     println("Saving results to: $filename")
-
-
 
     # Simplified version for num_δs = 1
     # Create uniform field strength for all vertices
@@ -452,9 +464,10 @@ function experiment_err_vs_bond_dim(nx::Int, ny::Int, lattice_params, hx::Float6
                                 init_state=init_state,
                                 bonds_dims=bonds_dims, 
                                 quick_start=quick_start,
-                                ref_bond_dim=ref_bond_dim)
+                                ref_bond_dim=ref_bond_dim,
+                                init_linkdims=init_linkdims)
                                 
-    errors, bonds_dims, max_truncation_errors, list_magnetization_per_site, list_magnetization_per_bond_dim, time_taken = results
+    errors, bonds_dims, max_truncation_errors, list_magnetization_per_site, list_magnetization_per_bond_dim, drmg_time = results
     
     println("Finished DMRG experiment.")
     println("-"^20*"\n")
@@ -467,8 +480,7 @@ function experiment_err_vs_bond_dim(nx::Int, ny::Int, lattice_params, hx::Float6
         "max_truncation_errors" => max_truncation_errors,
     ))
 
-
-    return list_magnetization_per_site, list_magnetization_per_bond_dim, time_taken
+    return list_magnetization_per_site, list_magnetization_per_bond_dim, drmg_time
 end
 
 

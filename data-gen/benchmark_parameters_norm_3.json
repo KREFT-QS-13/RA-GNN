@@ -1,7 +1,8 @@
 {
     "physics": {
         "C6": 1.0,
-        "init_state": "FM"
+        "init_state": "AFM",
+        "init_linkdims": 100
     },
     "lattice": {
         "nx": 5,
@@ -12,9 +13,9 @@
     },
     "deltas": [0.0, 0.5, 1.0, 1.5, 2.0, 2.25, 2.5, 3.0, 3.5, 4.0],
     "bond_dims": {
-        "start": 5,
+        "start": 0,
         "stop": 150,
-        "step": 5,
+        "step": 10,
         "include_1": true
     },
     "dmrg": {

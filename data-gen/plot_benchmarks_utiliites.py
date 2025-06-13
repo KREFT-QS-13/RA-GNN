@@ -52,14 +52,15 @@ def load_nested_dict_int_to_pairs(filename: str) -> Tuple[Dict[int, Dict[float, 
     except Exception as e:
         raise Exception(f"Error loading the file: {str(e)}")
 
-def load_data_to_plot(path_to_folder: str, init_state: str, optimal_bond_dim: int) -> Tuple[List[float], List[float]]:
+def load_data_to_plot(path_to_folder: str, init_state: str, optimal_bond_dim: int, init_linkdims: int) -> Tuple[List[float], List[float]]:
     """
     Load and reconstruct data for plotting from a NumPy file.
     
     Args:
         path_to_folder (str): Path to the folder containing the data
-        nx, ny (int): Dimensions of the lattice
+        init_state (str): Initial state used in the simulation
         optimal_bond_dim (int): The bond dimension to use for the plot
+        init_linkdims (int): Initial link dimensions used in the simulation
         
     Returns:
         Tuple[List[float], List[float]]: A tuple containing:
@@ -67,7 +68,7 @@ def load_data_to_plot(path_to_folder: str, init_state: str, optimal_bond_dim: in
             - List of staggered magnetizations
     """
     # Note: path_to_folder now includes the alpha folder
-    filename = os.path.join(path_to_folder, f"staggered_magnetization_init={init_state}.npz")
+    filename = os.path.join(path_to_folder, f"staggered_magnetization_init={init_state}_initdim={init_linkdims}.npz")
 
     # Load the nested dictionary
     data_dict = load_nested_dict_int_to_pairs(filename)
@@ -114,11 +115,11 @@ def add_physics_textbox(ax, physics_params):
             verticalalignment='top', horizontalalignment='center',
             bbox=props)
 
-def plot_magnetization_phase_diagram(nx, ny, path_to_folder, optimal_bond_dim, save_fig=False, physics_params=None, init_state:str="FM"):
+def plot_magnetization_phase_diagram(nx, ny, path_to_folder, optimal_bond_dim, save_fig=False, physics_params=None, init_state:str="FM", init_linkdims:int=100):
     """
     Plot the heat map phase diagram.
     """
-    deltas, staggered_magnetization = load_data_to_plot(path_to_folder, init_state, optimal_bond_dim)
+    deltas, staggered_magnetization = load_data_to_plot(path_to_folder, init_state, optimal_bond_dim, init_linkdims)
     
     fig, ax = plt.subplots(figsize=(8, 6)) 
     ax.plot(deltas, staggered_magnetization, label=f"Bond dim. = {optimal_bond_dim} with quick start")
@@ -127,7 +128,7 @@ def plot_magnetization_phase_diagram(nx, ny, path_to_folder, optimal_bond_dim, s
         add_physics_textbox(ax, physics_params)
     
     ax.legend(fontsize=10, loc="best")
-    ax.set_title(f'Staggered magnetization of {nx}x{ny} square lattice (init={init_state})', fontsize=16)
+    ax.set_title(f'Staggered magnetization of {nx}x{ny} square lattice (init={init_state}, initdim={init_linkdims})', fontsize=16)
     ax.set_ylabel('Staggered Magnetization', fontsize=13)
     ax.set_xlabel(r'Magnetic field coefficient $\Omega$', fontsize=13)
     ax.tick_params(axis='both', which='major', labelsize=9)
@@ -141,7 +142,7 @@ def plot_magnetization_phase_diagram(nx, ny, path_to_folder, optimal_bond_dim, s
         # Create imgs directory if it doesn't exist
         imgs_dir = os.path.join(path_to_folder, "imgs")
         os.makedirs(imgs_dir, exist_ok=True)
-        plt.savefig(os.path.join(imgs_dir, f"magnetization_phase_diagram_{nx}x{ny}_init={init_state}.png"))
+        plt.savefig(os.path.join(imgs_dir, f"magnetization_phase_diagram_{nx}x{ny}_init={init_state}_initdim={init_linkdims}.png"))
     plt.show()
 
 def plot_magnetization_heatmaps(nx, ny, path_to_folder, optimal_bond_dim, lattice_unit=10, color_map="inferno", physics_params=None):
@@ -189,7 +190,7 @@ def plot_magnetization_heatmaps(nx, ny, path_to_folder, optimal_bond_dim, lattic
     return fig
 
 def draw_plots_error_vs_maxdim(nx:int, ny:int, deltas:list[float], amp_R:float=0.0, filename:str="plot_err_vs_maxdim", 
-                              vs:str="max_trunc_err", folder="Experiment_1", physics_params=None, init_state:str="FM"):
+                              vs:str="max_trunc_err", folder="Experiment_1", physics_params=None, init_state:str="FM", init_linkdims:int=100):
     # Create figure with two subplots
     plt.style.use('tableau-colorblind10') # 'seaborn-v0_8-darkgrid' , 'tableau-colorblind10'
 
@@ -198,17 +199,14 @@ def draw_plots_error_vs_maxdim(nx:int, ny:int, deltas:list[float], amp_R:float=0
     ax1 = fig.add_subplot(gs[0])  # Main plot
     ax2 = fig.add_subplot(gs[1], sharex=ax1)  # Small plot below, sharing x-axis
     
-    # ax1.style.use('ggplot') # 
-    # ax2.style.use('ggplot') # 'seaborn-v0_8-darkgrid' , 'tableau-colorblind10'
-    ax2.set_xlabel("Bond dimension of DMRG", fontsize=18)  # Add x-label to bottom plot
+    ax2.set_xlabel("Bond dimension of DMRG", fontsize=18)
     ax1.set_yscale("log")
     ax2.set_yscale("log")
     ax1.tick_params(axis='both', which='major', labelsize=16)
-    ax1.set_xlabel("")  # Remove x-label from top plot
-    # ax1.set_xticks([])
+    ax1.set_xlabel("")
     ax2.tick_params(axis='both', which='major', labelsize=16)
-    ax1.grid(True, which='both', linestyle='-', alpha=0.5)  # Show both major and minor gridlines
-    ax2.grid(True, which='both', linestyle='-', alpha=0.5)  # Show both major and minor gridlines
+    ax1.grid(True, which='both', linestyle='-', alpha=0.5)
+    ax2.grid(True, which='both', linestyle='-', alpha=0.5)
 
     if physics_params:
         add_physics_textbox(ax1, physics_params)
@@ -246,9 +244,9 @@ def draw_plots_error_vs_maxdim(nx:int, ny:int, deltas:list[float], amp_R:float=0
     # First, plot all deltas on the main plot (ax1)
     for i, d in enumerate(deltas[1:] if deltas[0] == 0.0 else deltas):
         if amp_R != 0.0:
-            f = f'data_err_vs_maxdim_delta={d}_amp_R={amp_R}_init={init_state}.npz'
+            f = f'data_err_vs_maxdim_delta={d}_amp_R={amp_R}_init={init_state}_initdim={init_linkdims}.npz'
         else: 
-            f = f'data_err_vs_maxdim_delta={d}_init={init_state}.npz'
+            f = f'data_err_vs_maxdim_delta={d}_init={init_state}_initdim={init_linkdims}.npz'
         path = os.path.join(folder, f)
         
         print(f"Loading data from: {path}")
@@ -257,11 +255,11 @@ def draw_plots_error_vs_maxdim(nx:int, ny:int, deltas:list[float], amp_R:float=0
 
         if vs == "error":
             vs_value = data["errors"]
-            plot_title = f"Energy error vs Bond Dimension for 2D TFIM\n {nx}x{ny} sqr. lat. in {init_state} as init. state"
+            plot_title = f"Energy error vs Bond Dimension for 2D TFIM\n {nx}x{ny} sqr. lat. in {init_state} as init. state (initdim={init_linkdims})"
             fig.supylabel("Energy err. $|E - E_{ref}|$", fontsize=20)
         elif vs == "max_trunc_err":
             vs_value = data["max_truncation_errors"]
-            plot_title = f"Truncation Error vs Bond Dimension for 2D TFIM\n {nx}x{ny} sqr. lat. in {init_state} as init. state"
+            plot_title = f"Truncation Error vs Bond Dimension for 2D TFIM\n {nx}x{ny} sqr. lat. in {init_state} as init. state (initdim={init_linkdims})"
             fig.supylabel("Max truncation error", fontsize=20)
         else:
             raise ValueError(f"Invalid vs value: {vs}")
@@ -276,11 +274,11 @@ def draw_plots_error_vs_maxdim(nx:int, ny:int, deltas:list[float], amp_R:float=0
                 markersize=5)
 
     # Now plot only the first delta on the small plot (ax2)
-    d = deltas[0]  # Get first delta
+    d = deltas[0]
     if amp_R != 0.0:
-        f = f'data_err_vs_maxdim_delta={d}_amp_R={amp_R}_init={init_state}.npz'
+        f = f'data_err_vs_maxdim_delta={d}_amp_R={amp_R}_init={init_state}_initdim={init_linkdims}.npz'
     else: 
-        f = f'data_err_vs_maxdim_delta={d}_init={init_state}.npz'
+        f = f'data_err_vs_maxdim_delta={d}_init={init_state}_initdim={init_linkdims}.npz'
     path = os.path.join(folder, f)
     
     data = np.load(path)
@@ -295,7 +293,7 @@ def draw_plots_error_vs_maxdim(nx:int, ny:int, deltas:list[float], amp_R:float=0
             linestyle=line_styles[0],
             marker=markers[-1],
             markersize=5,
-            color='black')  # Use red color to distinguish in small plot
+            color='black')
 
     ax1.set_title(plot_title, fontsize=20)
     ax1.legend(loc="best", fontsize=10)
@@ -306,7 +304,7 @@ def draw_plots_error_vs_maxdim(nx:int, ny:int, deltas:list[float], amp_R:float=0
     os.makedirs(save_dir, exist_ok=True)
     
     filename_base = "plot_err_vs_maxdim" if vs == "error" else "plot_trunc_err_vs_maxdim"
-    filename = f'{filename_base}_{nx}x{ny}_init={init_state}' if amp_R == 0.0 else f'{filename_base}_{nx}x{ny}_per_init={init_state}'
+    filename = f'{filename_base}_{nx}x{ny}_init={init_state}_initdim={init_linkdims}' if amp_R == 0.0 else f'{filename_base}_{nx}x{ny}_per_init={init_state}_initdim={init_linkdims}'
     filename = os.path.join(save_dir, filename)
     plt.savefig(filename+".png", bbox_inches='tight')
     plt.show()

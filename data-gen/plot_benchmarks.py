@@ -46,6 +46,7 @@ def load_plot_parameters(json_file: str) -> Tuple[Dict[str, Any], str]:
         'R': params['lattice']['R'],
         'C6': params['physics']['C6'],
         'init_state': params['physics']['init_state'],
+        'init_linkdims': params['physics']['init_linkdims'],
         'deltas': params['deltas'],
         'output_folder': get_output_path(params['output']['folder'], params['lattice']['alpha'])
     }
@@ -73,9 +74,10 @@ def main():
     C6 = plot_params['C6']
     deltas = plot_params['deltas']
     vs = args.vs 
-    init_state = plot_params.get('init_state', 'FM')  # Get init_state from parameters, default to 'FM'
+    init_state = plot_params.get('init_state', 'FM')
+    init_linkdims = plot_params.get('init_linkdims', 100)
     
-    print(f"Plotting for: size = {nx}x{ny} with init_state = {init_state}")
+    print(f"Plotting for: size = {nx}x{ny} with init_state = {init_state}, init_linkdims = {init_linkdims}")
     print(f"Other parameters: C6 = {C6}, alpha = {alpha}, R = {R}, amp_R = {amp_R}")
     print(f"Deltas: {deltas}")
     output_folder = os.path.join(output_folder, f"{nx}x{ny}")
@@ -83,7 +85,7 @@ def main():
     # Step 1: Plot error vs bond dimension
     pbu.draw_plots_error_vs_maxdim(nx, ny, deltas, amp_R, vs=vs, folder=output_folder, 
                                   physics_params={'C6': C6, 'alpha': alpha, 'R': R, 'amp_R': amp_R},
-                                  init_state=init_state)
+                                  init_state=init_state, init_linkdims=init_linkdims)
     
     # Step 2: Ask for optimal bond dimension
     print(f"\nWhat is the optimal bond dimension, from 1 to {bd_max} with step {bd_step} (enter below and press enter): ")
@@ -95,7 +97,7 @@ def main():
     # Step 3: Plot magnetization phase diagram
     pbu.plot_magnetization_phase_diagram(nx, ny, output_folder, optimal_bond_dim, save_fig=True,
                                        physics_params={'C6': C6, 'alpha': alpha, 'R': R, 'amp_R': amp_R},
-                                       init_state=init_state)
+                                       init_state=init_state, init_linkdims=init_linkdims)
     
 if __name__ == "__main__":
     main()
