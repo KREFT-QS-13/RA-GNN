@@ -22,9 +22,9 @@ To-do list:
     - [x] 9x8 (χDMRG = 150, only test dataset)
     - [x] 9x9 (χDMRG = 160, only test dataset)
 - [x] Fixed datasets: 5x5, 6x6, 7x6
-- [ ] Calc the $C_3$ based on experimental value from papers
-- [ ] Make plots trunc_err vs bond dim. for different values $`\alpha=3`$ : $`J_{ij}\sim R^{-\alpha}`$
+- [ ] ~~Calc the $C_3$ based on experimental value from papers~~
+- [x] Make plots trunc_err vs bond dim. for different values $`\alpha=`$ 3,2,1 : $`J_{ij}\sim R^{-\alpha}`$
 - [x] Start developing GNN-PNA model
 - [x] Train GNN and recreate figure 4. from the papaer only for case 5
 - [ ] Recrate the figure 4 just for the MLP network at the end of the current architecture -> TODO: Mapping the input to make it compatible
-- [ ] Make phase diagram from the paper for just a short interval, to be able idetify if we are close to the phase transistion
+- [x] Make phase diagram dor benchmarks
