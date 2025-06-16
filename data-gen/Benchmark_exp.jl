@@ -352,6 +352,16 @@ function exp2_TFI_DMRG(g::NamedGraph, edgs::Vector{Tuple{Tuple{Int64, Int64},Tup
     return Mg
 end
 
+function calculate_Kac_Normalization(g::NamedGraph, distances::Vector{Float64}, alpha::Int)
+    num_vertices = length(vertices(g))
+
+    kac_norm = sum(1.0./(distances.^alpha))/num_vertices
+
+    println("Number of vertices: $num_vertices")
+    println("Kac normalization: $kac_norm")
+    return kac_norm
+end
+
 
 function setup_lattice(nx::Int, ny::Int, R::Float64, amp_R::Float64, C6::Float64, init_state::String="FM", init_linkdims::Int=100, alpha::Int=6, path_to_folder::String="./Experiment_1")
     # Remove redundant path creation since it's done in main_benchmark.jl
@@ -424,7 +434,7 @@ function setup_lattice(nx::Int, ny::Int, R::Float64, amp_R::Float64, C6::Float64
         "Jij" => Jij,
         "distances" => distances,
         "init_linkdims" => init_linkdims,
-        "init_state" => init_state_map  
+        "init_state" => init_state_map
     ))
 
     return R, amp_R, g, edges_array, sites, Jij, num_vertices, pstns

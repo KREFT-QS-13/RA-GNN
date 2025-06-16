@@ -105,7 +105,7 @@ def add_physics_textbox(ax, physics_params):
     """
     textstr = ' | '.join((
         r'$C_6 = %.2f$' % (physics_params['C6'],),
-        r'$\alpha = %d$' % (physics_params['alpha'],),
+        r'$\alpha = %s$' % ( str(physics_params['alpha']) if 'alpha' in physics_params else 'all'),
         r'$R_0\pm\delta R= %.2f\pm%.2f$' % (physics_params['R'], physics_params['amp_R']),
     ))
     
@@ -208,6 +208,9 @@ def draw_plots_error_vs_maxdim(nx:int, ny:int, deltas:list[float], amp_R:float=0
     ax1.grid(True, which='both', linestyle='-', alpha=0.5)
     ax2.grid(True, which='both', linestyle='-', alpha=0.5)
 
+    # Set empty x-tick labels for ax1 while keeping grid lines
+    ax1.set_xticklabels([])  # This removes the labels but keeps the tick marks and grid lines
+    
     if physics_params:
         add_physics_textbox(ax1, physics_params)
 
@@ -310,3 +313,276 @@ def draw_plots_error_vs_maxdim(nx:int, ny:int, deltas:list[float], amp_R:float=0
     plt.show()
 
 
+def load_data_to_plot_staggered_magnetization_all_alpha(path_to_folder: str, init_state: str, optimal_bond_dim: int, init_linkdims: int, nx:int, ny:int) -> Dict[float, Tuple[List[float], List[float]]]:
+    """
+    Load staggered magnetization data for different alpha values.
+    
+    Args:
+        path_to_folder (str): Base path to the folder containing alpha-specific subfolders
+        init_state (str): Initial state used in the simulation (e.g., "FM", "AFM")
+        optimal_bond_dim (int): The bond dimension to use for the plot
+        init_linkdims (int): Initial link dimensions used in the simulation
+        nx (int): Number of sites in the x direction
+        ny (int): Number of sites in the y direction
+        
+    Returns:
+        Dict[float, Tuple[List[float], List[float]]]: Dictionary where:
+            - Keys are alpha values
+            - Values are tuples of (deltas, magnetizations) for each alpha
+    """
+    # Find all alpha folders in the path
+    alpha_folders = glob.glob(os.path.join(path_to_folder, "alpha_*"))
+    if not alpha_folders:
+        raise ValueError(f"No alpha folders found in {path_to_folder}")
+    
+    # Dictionary to store results
+    alpha_data = {}
+    
+    # Process each alpha folder
+    for alpha_folder in alpha_folders:
+        try:
+            # Extract alpha value from folder name
+            alpha = float(alpha_folder.split("alpha_")[-1])
+            
+            # Construct path to the lattice size folder
+            lattice_folder = os.path.join(alpha_folder, f"{nx}x{ny}")
+            if not os.path.exists(lattice_folder):
+                print(f"Warning: No {nx}x{ny} folder found in {alpha_folder}")
+                continue
+            
+            # Load data for this alpha value
+            deltas, magnetizations = load_data_to_plot(
+                lattice_folder,  # Use the lattice folder path
+                init_state=init_state,
+                optimal_bond_dim=optimal_bond_dim,
+                init_linkdims=init_linkdims
+            )
+            
+            # Store in dictionary
+            alpha_data[alpha] = (deltas, magnetizations)
+            
+        except (ValueError, FileNotFoundError) as e:
+            print(f"Warning: Could not process folder {alpha_folder}: {str(e)}")
+            continue
+    
+    if not alpha_data:
+        raise ValueError(f"No valid data found in any alpha folder for lattice size {nx}x{ny}")
+    
+    # Sort the dictionary by alpha values
+    return dict(sorted(alpha_data.items()))
+
+
+def plot_phase_diagram_all_alpha(nx: int, ny: int, path_to_folder: str, optimal_bond_dim: int, save_fig: bool = False, 
+                               physics_params: dict = None, init_state: str = "FM", init_linkdims: int = 100):
+    """
+    Plot the staggered magnetization phase diagram for all alpha values.
+    
+    Args:
+        nx (int): Number of sites in the x direction
+        ny (int): Number of sites in the y direction
+        path_to_folder (str): Path to the folder containing alpha-specific subfolders
+        optimal_bond_dim (int): The bond dimension to use for the plot
+        save_fig (bool): Whether to save the figure
+        physics_params (dict): Dictionary containing physics parameters for the text box
+        init_state (str): Initial state used in the simulation (e.g., "FM", "AFM")
+        init_linkdims (int): Initial link dimensions used in the simulation
+    """
+    # Load data for all alpha values
+    alpha_data = load_data_to_plot_staggered_magnetization_all_alpha(
+        path_to_folder=path_to_folder,
+        init_state=init_state,
+        optimal_bond_dim=optimal_bond_dim,
+        init_linkdims=init_linkdims,
+        nx=nx,
+        ny=ny
+    )
+    
+    # Create the plot
+    fig, ax = plt.subplots(figsize=(8, 6)) 
+
+    markers = [
+        'o',    # circle
+        's',    # square
+        '^',    # triangle up
+        'D',    # diamond
+    ]
+    line_styles = ["-", "--", "-.", ":"]
+
+    # Plot data for each alpha value
+    for i, (alpha, (deltas, magnetizations)) in enumerate(alpha_data.items()):
+        ax.plot(deltas, magnetizations, 
+                label=f"α = {alpha}", 
+                marker=markers[i],  # Add markers for better visibility
+                markersize=4,
+                linestyle=line_styles[i],
+                linewidth=1.5)
+    
+    # Add physics parameters text box if provided
+    if physics_params:
+        add_physics_textbox(ax, physics_params)
+    
+    # Customize the plot
+    ax.set_title(f'Staggered magnetization of {nx}x{ny} square lattice\n'
+                f'(init={init_state}, initdim={init_linkdims}, bond dim={optimal_bond_dim})', 
+                fontsize=14)
+    ax.set_xlabel(r'Magnetic field coefficient $\Omega$', fontsize=12)
+    ax.set_ylabel('Staggered Magnetization', fontsize=12)
+    ax.grid(True, linestyle='--', alpha=0.7)
+    ax.legend(title='Alpha values', loc='best', fontsize=11)
+    
+    # Adjust layout to prevent label cutoff
+    plt.tight_layout()
+    
+    # Save figure if requested
+    if save_fig:
+        save_dir = os.path.join(path_to_folder, "agg_imgs")
+        os.makedirs(save_dir, exist_ok=True)
+        filename = f"magnetization_phase_diagram_all_alpha_{nx}x{ny}_init={init_state}_initdim={init_linkdims}.png"
+        plt.savefig(os.path.join(save_dir, filename), bbox_inches='tight', dpi=300)
+    
+    plt.show()
+    return fig
+
+
+def plot_FM_and_AFM_error_vs_bond_dim(vs, nx=5, ny=5, folder="./Benchmark-normalized/",  deltas=[0.0, 0.02, 0.04, 0.06, 0.08, 0.10], save_fig=True, 
+                                     physics_params={'C6': 1.0, 'alpha': "NaN", 'R': 1.0, 'amp_R': 0.0}, init_linkdims=100):
+    """
+    Plot the error vs bond dimension for both FM and AFM states.
+    AFM data is plotted in light grey to shadow the FM data.
+    
+    Args:
+        nx (int): Number of sites in x direction
+        ny (int): Number of sites in y direction
+        folder (str): Path to the benchmark data folder
+        vs (str): Type of plot to show: "error" or "max_trunc_err"
+        deltas (list): List of deltas to plot
+        optimal_bond_dim (int): Optimal bond dimension to highlight
+        save_fig (bool): Whether to save the figure
+        physics_params (dict): Dictionary containing physics parameters
+        init_linkdims (int): Initial link dimensions used in simulation
+    """
+    plt.style.use('tableau-colorblind10')
+    
+    # Create figure with two subplots
+    fig = plt.figure(figsize=(12, 8))
+    gs = plt.GridSpec(2, 1, height_ratios=[4, 1], hspace=0.08)
+    ax1 = fig.add_subplot(gs[0])  # Main plot
+    ax2 = fig.add_subplot(gs[1], sharex=ax1)  # Small plot below
+    
+    # Set up axes properties
+    ax2.set_xlabel("Bond dimension of DMRG", fontsize=18)
+    ax1.set_yscale("log")
+    ax2.set_yscale("linear")
+    ax1.tick_params(axis='both', which='major', labelsize=16)
+    ax1.set_xlabel("")
+    ax2.tick_params(axis='both', which='major', labelsize=16)
+    ax1.grid(True, which='both', linestyle='-', alpha=0.5)
+    ax2.grid(True, which='both', linestyle='-', alpha=0.5)
+    
+    # Set empty x-tick labels for ax1 while keeping grid lines
+    ax1.set_xticklabels([])  # This removes the labels but keeps the tick marks and grid lines
+    
+    if physics_params:
+        add_physics_textbox(ax1, physics_params)
+    
+    # Define markers and line styles
+    line_styles = ["-", "--", "-.", ":", "-", "--", "-.", ":", "-", "--", "-.", ":"]
+    markers = [
+        'o',    # circle
+        's',    # square
+        '^',    # triangle up
+        'v',    # triangle down
+        '<',    # triangle left
+        '>',    # triangle right
+        'D',    # diamond
+        'd',    # thin diamond
+        'p',    # pentagon
+        'h',    # hexagon
+        '8',    # octagon
+        '*',    # star
+        '+',    # plus
+        'x',    # x
+        '|',    # vertical line
+        '_',    # horizontal line
+        '.',    # point
+        ',',    # pixel
+        '1',    # tri_down
+        '2',    # tri_up
+        '3',    # tri_left
+        '4',    # tri_right
+        'P',    # plus (filled)
+        'X',    # x (filled)
+        'H'     # hexagon2
+    ]
+    
+    # Plot for both FM and AFM
+    for init_state, color in [("AFM", "darkgrey"),("FM", None),]:
+        # Plot all deltas on the main plot (ax1)
+        for i, d in enumerate(deltas):
+            if physics_params['amp_R'] != 0.0:
+                f = f'data_err_vs_maxdim_delta={d}_amp_R={physics_params["amp_R"]}_init={init_state}_initdim={init_linkdims}.npz'
+            else:
+                f = f'data_err_vs_maxdim_delta={d}_init={init_state}_initdim={init_linkdims}.npz'
+            path = os.path.join(folder, f"alpha_{int(physics_params['alpha'])}/{nx}x{ny}", f)
+            
+            try:
+                data = np.load(path)
+                maxdims = data["maxdims"]
+                if vs == "error":
+                        vs_value = data["errors"]
+                        plot_title = f"Energy error vs Bond Dimension for 2D TFIM\n {nx}x{ny} sqr. lat. both FM and AFM (in grey) (initdim={init_linkdims})"
+                        fig.supylabel("Energy err. $|E - E_{ref}|$", fontsize=20)
+                elif vs == "max_trunc_err":
+                        vs_value = data["max_truncation_errors"]
+                        plot_title = f"Truncation Error vs Bond Dimension for 2D TFIM\n {nx}x{ny} sqr. lat. both FM and AFM (in grey) (initdim={init_linkdims})"
+                        fig.supylabel("Max truncation error", fontsize=20)
+                else:
+                        raise ValueError(f"Invalid vs value: {vs}")
+                
+                # Plot on main axis
+                if d != 0.0:
+                    ax1.plot(maxdims, vs_value,
+                        label=f"{init_state} $\delta$ = {d}" if color is None else None,  # Only label FM data
+                        linestyle=line_styles[i],
+                        marker=markers[i],
+                        markersize=5,
+                        color=color,
+                        alpha=0.75 if color is not None else 1.0)
+                else:
+                    # Plot first delta on small plot (ax2)
+                    ax2.plot(maxdims, vs_value,
+                            label=f"{init_state} $\delta$ = {d}" if color is None else None,
+                            linestyle=line_styles[0],
+                            marker=markers[-1],
+                            markersize=5,
+                            color=color,
+                            alpha=0.75 if color is not None else 1.0)
+                           
+                    print(f'Values to plot for {init_state} and delta {d} are:\n {vs_value}.')           
+
+         
+
+            except (FileNotFoundError, KeyError) as e:
+                print(f"Warning: Could not load data for {init_state}, delta={d}: {str(e)}")
+                continue
+    
+    ax1.set_title(plot_title, fontsize=20)
+    
+    # Add legend only for FM data
+    ax1.legend(loc="best", fontsize=10)
+    ax2.legend(loc="best", fontsize=10)
+    
+    # Save figure if requested
+    if save_fig:
+        save_dir = os.path.join(folder, "agg_imgs")
+        os.makedirs(save_dir, exist_ok=True)
+        if vs == "error":
+            filename = f"plot_energy_err_vs_maxdim_FM_AFM_{nx}x{ny}_initdim={init_linkdims}_alpha={physics_params['alpha']}"
+        elif vs == "max_trunc_err":
+            filename = f"plot_trunc_err_vs_maxdim_FM_AFM_{nx}x{ny}_initdim={init_linkdims}_alpha={physics_params['alpha']}"
+        if physics_params['amp_R'] != 0.0:
+            filename += "_pert"
+        plt.savefig(os.path.join(save_dir, filename + ".png"), bbox_inches='tight', dpi=300)
+    
+    plt.show()
+    return fig

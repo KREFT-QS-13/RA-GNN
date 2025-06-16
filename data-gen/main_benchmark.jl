@@ -60,7 +60,7 @@ println("Outer keys: $(keys(staggered_magnetization))")
 println("Inner keys: $(keys(staggered_magnetization[1]))")
 
 # Save the staggered magnetization data
-filename = joinpath(path_to_folder, "staggered_magnetization_init=$(init_state)_initdim=$(init_linkdims).npz")
+filename = joinpath(path_to_folder, "staggered_magnetization_$(nx)x$(ny)_alpha=$(alpha)_R=$(R)_amp_R=$(amp_R)_init=$(init_state)_initdim=$(init_linkdims).npz")
 Benchmark_exp.save_dict_int_to_pairs(filename, staggered_magnetization)
 println("Saved staggered magnetization to: $filename")
 
@@ -68,7 +68,7 @@ total_time = time() - start_time
 println("Total time of experiment: $total_time seconds")
 drmg_time_list[-1.0][0.0] = total_time
 # Save the time taken data
-filename = joinpath(path_to_folder, "drmg_time_init=$(init_state)_initdim=$(init_linkdims).npz")
+filename = joinpath(path_to_folder, "drmg_time_$(nx)x$(ny)_alpha=$(alpha)_R=$(R)_amp_R=$(amp_R)_init=$(init_state)_initdim=$(init_linkdims).npz")
 Benchmark_exp.save_dict_int_to_pairs(filename, drmg_time_list)
 println("Saved time taken to: $filename")
 
