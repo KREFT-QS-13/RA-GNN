@@ -36,7 +36,7 @@ num_samples = generation_params["num_samples"]
 # Initial x-field strength for the ground state simulation
 delta = generation_params["delta"]; amp_delta = generation_params["amp_delta"] # omega in the papaer
 
-path_to_folder = save_folder * "/alpha=$(alpha)"
+path_to_folder = save_folder * "/alpha_$(alpha)"
 # "./Datasets/dataset_NO_Dr_X_Mg_NN_NNN_delta_one" #"./Mg_NN_NNN_delta_hist/dataset_mps_NNN_CTN_RYD_ALL"
 if is_sampled
     path_to_folder = path_to_folder * "_SMPL_$(num_samples)"  #"./Mg_NN_NNN_delta_hist/dataset_mps_NNN_CTN_RYD_ALL/"
