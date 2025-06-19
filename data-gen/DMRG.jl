@@ -119,7 +119,7 @@ function TFI_DMRG(g::NamedGraph, χ::Int64, edgs::Vector{Tuple{Tuple{Int64, Int6
 end
 
 
-function main_Mg_NN_NNN_δ(nx::Int, ny::Int, alpha::Float64, num_realization::Int, num_δs::Int, χDMRG::Int, R::Float64, amp_R::Float64, hx::Float64,
+function main_Mg_NN_NNN_δ(nx::Int, ny::Int, alpha::Int, num_realization::Int, num_δs::Int, χDMRG::Int, R::Float64, amp_R::Float64, hx::Float64,
     amp_delta::Float64, path_to_folder::String; is_sampled=false, num_samples=1000, start_iter=0)
     """
         Main function to generate data for nearest-neighbor (NN) and next-nearest-neighbor (NNN) interactions
