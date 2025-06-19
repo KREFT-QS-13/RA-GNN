@@ -305,64 +305,6 @@ function exp_TFI_DMRG(g::NamedGraph, edgs::Vector{Tuple{Tuple{Int64, Int64},Tupl
     return errors, bonds_dims, max_truncation_errors, list_magnetization_per_site, list_magnetization_per_bond_dim, drmg_time
 end
 
-function exp2_TFI_DMRG(g::NamedGraph, edgs::Vector{Tuple{Tuple{Int64, Int64},Tuple{Int64,Int64}}}, sites; nsweeps=20, hs::Union{Nothing,Dict} = nothing, Jzzs::Vector{Float64})
-    L = length(vertices(g))
-    size_L = trunc(Int, sqrt(L))
-    if hs === nothing
-        hs = Dict(zip(vertices(g), [1.0 for e in vertices(g)]))
-    end
-
-    nodes = [i for i=0:length(vertices(g))-1]
-    Julia_Python_node_mapping = Dict(zip(nodes, vertices(g)))
-
-    # Build the Hamiltonian
-    H = HTFI(g, hs, Jzzs, edgs, sites)
-
-    # Initial state for DMRG routine (all spins pointing up)
-    init_state = ["Up" for _ in 1:L]
-    ψ0 = ITensors.randomMPS(sites, init_state; linkdims = 2)
-
-    println("Starting DMRG for magnetization...")
-    # maxdims = collect(range(5, 100, step=5))
-    # pushfirst!(maxdims, 1)  # Add 1 at the beginning
-    # maxdims = [1,5,50,100]
-    maxdims = 150
-
-   
-    delta = hs[first(vertices(g))]
-    println("-"^20)
-    println("Starting DMRG for delta = $delta bond dimension = $maxdims:")
-
-    sweeps = Sweeps(nsweeps)
-    cutoff!(sweeps, 1E-18)
-    maxdim!(sweeps, Tuple(min(2^(floor(Int64, 0.5*i)), maxdims)  for i in 1:nsweeps)...)
-    # maxdim!(sweeps, maxdims)
-    
-    _, ψ0 = dmrg(H, ψ0, sweeps)
-
-    # Calculate magnetization for this bond dimension
-    magnetization_dict = Dict(zip(vertices(g), expect(ψ0, "Z")))
-    Mg_per_site = [magnetization_dict[Julia_Python_node_mapping[node]] for node in nodes]
-    Mg = calculate_staggered_magnetization(Mg_per_site, size_L)
-    println("For bond dimension $maxdims, the staggered magnetization is $Mg")
-    println("-"^20*"\n")
-
-
-    println("Finished.")
-    return Mg
-end
-
-function calculate_Kac_Normalization(g::NamedGraph, distances::Vector{Float64}, alpha::Int)
-    num_vertices = length(vertices(g))
-
-    kac_norm = sum(1.0./(distances.^alpha))/num_vertices
-
-    println("Number of vertices: $num_vertices")
-    println("Kac normalization: $kac_norm")
-    return kac_norm
-end
-
-
 function setup_lattice(nx::Int, ny::Int, R::Float64, amp_R::Float64, C6::Float64, init_state::String="FM", init_linkdims::Int=100, alpha::Int=6, path_to_folder::String="./Experiment_1")
     # Remove redundant path creation since it's done in main_benchmark.jl
     # path_to_folder = get_output_path(path_to_folder, alpha, nx, ny)
@@ -434,14 +376,16 @@ function setup_lattice(nx::Int, ny::Int, R::Float64, amp_R::Float64, C6::Float64
         "Jij" => Jij,
         "distances" => distances,
         "init_linkdims" => init_linkdims,
-        "init_state" => init_state_map
+        "init_state" => init_state_map,
+        "nx" => nx,
+        "ny" => ny
     ))
 
     return R, amp_R, g, edges_array, sites, Jij, num_vertices, pstns
 end
 
 
-function experiment_err_vs_bond_dim(nx::Int, ny::Int, lattice_params, hx::Float64, init_state::String, bonds_dims::Vector{Int}, alpha::Int=6, quick_start::Bool=true, ref_bond_dim::Int=200, init_linkdims::Int=100, path_to_folder::String="./Experiment_1")
+function experiment_err_vs_bond_dim(lattice_params, hx::Float64, init_state::String, bonds_dims::Vector{Int}, alpha::Int=6, quick_start::Bool=true, ref_bond_dim::Int=200, init_linkdims::Int=100, path_to_folder::String="./Experiment_1")
     # Remove redundant path creation since it's done in main_benchmark.jl
     # path_to_folder = get_output_path(path_to_folder, alpha, nx, ny)
     
@@ -490,112 +434,8 @@ function experiment_err_vs_bond_dim(nx::Int, ny::Int, lattice_params, hx::Float6
         "max_truncation_errors" => max_truncation_errors,
     ))
 
+
     return list_magnetization_per_site, list_magnetization_per_bond_dim, drmg_time
-end
-
-
-function experiment_magnetization(deltas, nx::Int, ny::Int, R::Float64, amp_R::Float64, alpha::Int=6, path_to_folder::String="./Experiment_1", max_bond_dim::Int=200, init_state::String="FM")
-    # Remove redundant path creation since it's done in main_benchmark.jl
-    # path_to_folder = get_output_path(path_to_folder, alpha, nx, ny)
-    
-    # Initialize dictionary with Float64 values instead of arrays
-    magnetization = OrderedDict(delta=>0.0 for delta in sort(deltas))
-    println("Initial magnetization dictionary: $magnetization")
-    
-    for hx in deltas       
-        println("Experiment 2: Magnetization - Phase Transition")
-        
-        
-        # Define the 2D grid as a named graph with vertices (i,j) where i is the row and j is the column
-        # NOTE WE ARE IMPLICITING ORDERING THE MPS VERTICES AS A SNAKE THROUGH THE LATTICE. 
-        # TO CHANGE THE ORDERING OF THE SITES (WHICH MIGHT HELP/HINDER THE SIMULATION) THEN WE NEED
-        # TO REORDER THE LIST vertices(g) APPROPRIATELY
-        g = NamedGraphs.NamedGraphGenerators.named_grid((nx, ny))
-        
-        num_vertices = length(vertices(g))
-        
-        nominal_values = Array{Tuple{Float64,Float64},2}([(i*R, j*R) for i in 0:nx-1, j in 0:ny-1])
-        edges_array = Array{Tuple{Tuple{Int,Int},Tuple{Int,Int}},2}(undef,(length(nominal_values),length(nominal_values)))
-        # Create the meshgrid
-        x = range(1, stop=nx)  # From 0 to 5 with 6 points
-        y = range(1, stop=ny)  # From 0 to 5 with 6 points
-        X = repeat(x, 1, length(y))
-        Y = repeat(y', length(x), 1)
-        nn = reshape(collect(zip(X, Y)),nx*ny)
-        for i in 1:length(nominal_values) # y = j//ny+1, x = j%nx
-            for j in 1:length(nominal_values)
-                edges_array[i,j] = (nn[i],nn[j])
-            end
-        end
-        # @show nn
-        
-        # saving the true distances
-        distances_nom = pairwise(
-            Euclidean(),
-            reshape(nominal_values,length(nominal_values)),
-            reshape(nominal_values,length(nominal_values))
-            )
-            indices = findall(distances_nom.==0.0) # indices pointing to values 0
-            mask = [CartesianIndex(i, j) for j in 1:size(edges_array, 2), i in 1:size(edges_array, 1) if !(CartesianIndex(i,j) in indices)] # same mask used everywhere
-            distances_nom = distances_nom[mask]
-            edges_array = edges_array[mask]
-            
-            
-            # Get the indices for the MPS. Assume no conservation laws
-            sites = siteinds("S=1/2", length(vertices(g)); conserve_qns=false)
-            
-            println("The number of available threads is : $(Sys.CPU_THREADS)")
-            println("The number of threads used: $(Threads.nthreads())")
-            # H_gates = ops([("Ry", n, (θ=π / 2,)) for n in 1:nx*ny], sites)
-            
-            # Realization:
-            perturbations = [(rescaled_rand(-amp_R,amp_R), rescaled_rand(-amp_R,amp_R)) for _ in 1:length(nominal_values)]
-            perturbations = reshape(perturbations,size(nominal_values))
-            pstns = nominal_values.+perturbations
-
-        # all-to-all distances
-        distances = pairwise(
-            Euclidean(),
-            reshape(pstns,length(pstns)),
-            reshape(pstns,length(pstns))
-            )
-            
-            distances = distances[mask]
-            Jij = C6./(distances.^alpha)
-            
-            # Simplified version for num_δs = 1
-            # Create uniform field strength for all vertices
-            # hxs = ones(num_vertices).*hxs_grid[δ_snapshot+1] #ones(length(edges(g)))*0
-            # hhh = Dict(zip(vertices(g), hxs))
-            hhh = Dict(zip(vertices(g), fill(hx, num_vertices)))
-            
-            # Run DMRG experiment
-            
-            @time mag = exp2_TFI_DMRG(g, edges_array, sites; hs = hhh, Jzzs = Jij)
-            magnetization[hx] = mag  # Now this assignment will work
-            println("Finished DMRG experiment.\n")
-            println("Magnetization to plot: $magnetization")
-            println("-"^20*"\n")
-        end
-
-    deltas_min, deltas_max = minimum(deltas), maximum(deltas)
-    deltas_size =  length(deltas)
-    if amp_R != 0.0
-        filename_mag = joinpath(path_to_folder, "Mg_init=$(init_state)_delta_$(deltas_min)_$(deltas_max)_$(deltas_size)_amp_R=$(amp_R).npz")
-    else
-        filename_mag = joinpath(path_to_folder, "Mg_init=$(init_state)_delta_$(deltas_min)_$(deltas_max)_$(deltas_size).npz")
-    end
-    println("Saving results to: $filename_mag")
-
-    # Convert OrderedDict to separate arrays for keys and values
-    delta_values = collect(keys(magnetization))
-    mag_values = collect(values(magnetization))
-    
-    # Save as a dictionary with separate arrays
-    npzwrite(filename_mag, Dict(
-        "deltas" => delta_values,
-        "magnetization" => mag_values
-    ))
 end
 
 end

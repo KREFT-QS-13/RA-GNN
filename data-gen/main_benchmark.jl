@@ -44,7 +44,7 @@ println("Lattice ptns: $(lattice_params[end])")
 println("-"^20)
 for d in deltas
     println("Running experiment for delta = $d")
-    mag_per_site, mag_per_bond_dim, drmg_time = Benchmark_exp.experiment_err_vs_bond_dim(nx, ny, lattice_params, d, init_state, bond_dims, alpha, quick_start, ref_bond_dim, init_linkdims, path_to_folder)
+    mag_per_site, mag_per_bond_dim, drmg_time = Benchmark_exp.experiment_err_vs_bond_dim(lattice_params, d, init_state, bond_dims, alpha, quick_start, ref_bond_dim, init_linkdims, path_to_folder)
     
     for bd in bond_dims
         staggered_magnetization[bd][d] = mag_per_bond_dim[bd]
@@ -71,7 +71,3 @@ drmg_time_list[-1.0][0.0] = total_time
 filename = joinpath(path_to_folder, "drmg_time_$(nx)x$(ny)_alpha=$(alpha)_R=$(R)_amp_R=$(amp_R)_init=$(init_state)_initdim=$(init_linkdims).npz")
 Benchmark_exp.save_dict_int_to_pairs(filename, drmg_time_list)
 println("Saved time taken to: $filename")
-
-
-# TODO: Fix magnetization_per_site so it will work as staggered_magnetization and be saved
-# Benchmark_exp.save_dict_int_to_pairs(path_to_folder * "/magnetization_per_site.npz", magnetization_per_site)
