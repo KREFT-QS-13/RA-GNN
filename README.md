@@ -5,10 +5,12 @@ All work done in this project relates to the following paper: [Learning interact
 Supervisor: **Anna Dawid**
 
 ### Cloning and launching code
-```git clone https://github.com/KREFT-QS-13/RA-GNN.git
+```
+git clone https://github.com/KREFT-QS-13/RA-GNN.git
 ```
 
-```julia --project=. -e 'using Pkg; Pkg.resolve(); Pkg.instantiate(); Pkg.precompile()'
+```
+julia --project=. -e 'using Pkg; Pkg.add("Statistics"); Pkg.resolve(); Pkg.instantiate(); Pkg.precompile()'
 ```
 
 
