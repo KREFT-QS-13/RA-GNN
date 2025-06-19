@@ -12,6 +12,9 @@ Benchmark/*x*/*
 
 # Ignore all .npz files in data-gen and its subfolders
 data-gen/**/*.npz
+data-gen/**/*.h5
+data-gen/**/*.json
+data-gen/**/*.npy
 
 # Ignore directories matching {number}x{number} in data-gen
 data-gen/[0-9]*x[0-9]*/

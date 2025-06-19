@@ -13,11 +13,12 @@ using NamedGraphs
 using Graphs
 using Distances
 using ITensors
+using JSON
 
 using .Filul
 using .Latul
 
-export HTFI, TFI_DMRG, main_Mg_NN_NNN_δ, main_Mg_NN_NNN_δ_smpl
+export HTFI, TFI_DMRG, main_Mg_NN_NNN_δ, main_Mg_NN_NNN_δ_smpl, load_params_from_json
 export rescaled_rand
 
 function rescaled_rand(x, y)
@@ -29,24 +30,29 @@ function Base.:+(a::Tuple{T, T}, b::Tuple{T, T}) where T <: Number
 end
 
 # C6 coefficient and perfect r = 7 um
-const C6 = 5420158.53
+# const C6 = 5420158.53
+const C6 = 1.0
 
-"""
-    HTFI(g::NamedGraph, hs::Dict, Jzzs::Vector{Float64}, edgs::Vector{Tuple{Tuple{Int64, Int64},Tuple{Int64,Int64}}}, sites)
+function load_params_from_json(path_to_json::String)
+    params = JSON.parsefile(path_to_json)
+    return params["hamiltonian_params"], params["generation_params"], params["save_folder"], params["is_test_dataset"]
+end
 
-Construct the Transverse Field Ising (TFI) Hamiltonian for a given graph configuration.
 
-# Arguments
-- `g`: Named graph representing the lattice structure
-- `hs`: Dictionary mapping vertices to their transverse field strengths
-- `Jzzs`: Vector of ZZ interaction strengths for each edge
-- `edgs`: Vector of edge tuples defining the connectivity
-- `sites`: ITensor site indices for the quantum system
-
-# Returns
-- An MPO (Matrix Product Operator) representing the TFI Hamiltonian
-"""
 function HTFI(g::NamedGraph, hs::Dict, Jzzs::Vector{Float64}, edgs::Vector{Tuple{Tuple{Int64, Int64},Tuple{Int64,Int64}}}, sites)
+    """
+    Construct the Transverse Field Ising (TFI) Hamiltonian for a given graph configuration.
+
+    # Arguments
+    - `g`: Named graph representing the lattice structure
+    - `hs`: Dictionary mapping vertices to their transverse field strengths
+    - `Jzzs`: Vector of ZZ interaction strengths for each edge
+    - `edgs`: Vector of edge tuples defining the connectivity
+    - `sites`: ITensor site indices for the quantum system
+
+    # Returns
+    - An MPO (Matrix Product Operator) representing the TFI Hamiltonian
+    """
     ampo = OpSum()
     g_vs = collect(vertices(g))
     # Run over the edges and add the ZZ term to the Hamiltonian with the appropriate interaction strength J
@@ -71,25 +77,23 @@ function HTFI(g::NamedGraph, hs::Dict, Jzzs::Vector{Float64}, edgs::Vector{Tuple
     return H
 end
   
-"""
-    TFI_DMRG(g::NamedGraph, χ::Int64, edgs::Vector{Tuple{Tuple{Int64, Int64},Tuple{Int64,Int64}}}, sites; 
-             nsweeps=20, hs::Union{Nothing,Dict}=nothing, Jzzs::Vector{Float64})
 
-Perform DMRG calculation for the TFI model to find the ground state.
-
-# Arguments
-- `g`: Named graph representing the lattice structure
-- `χ`: Maximum bond dimension for the MPS
-- `edgs`: Vector of edge tuples defining the connectivity
-- `sites`: ITensor site indices
-- `nsweeps`: Number of DMRG sweeps (default: 20)
-- `hs`: Dictionary of transverse field strengths (default: all 1.0)
-- `Jzzs`: Vector of ZZ interaction strengths
-
-# Returns
-- The ground state as an MPS (Matrix Product State)
-"""
 function TFI_DMRG(g::NamedGraph, χ::Int64, edgs::Vector{Tuple{Tuple{Int64, Int64},Tuple{Int64,Int64}}}, sites; nsweeps=20, hs::Union{Nothing,Dict} = nothing, Jzzs::Vector{Float64})
+    """
+    Perform DMRG calculation for the TFI model to find the ground state.
+
+    # Arguments
+    - `g`: Named graph representing the lattice structure
+    - `χ`: Maximum bond dimension for the MPS
+    - `edgs`: Vector of edge tuples defining the connectivity
+    - `sites`: ITensor site indices
+    - `nsweeps`: Number of DMRG sweeps (default: 20)
+    - `hs`: Dictionary of transverse field strengths (default: all 1.0)
+    - `Jzzs`: Vector of ZZ interaction strengths
+
+    # Returns
+    - The ground state as an MPS (Matrix Product State)
+    """
     L = length(vertices(g))
     if hs === nothing
         hs = Dict(zip(vertices(g), [1.0 for e in vertices(g)]))
@@ -114,31 +118,27 @@ function TFI_DMRG(g::NamedGraph, χ::Int64, edgs::Vector{Tuple{Tuple{Int64, Int6
     return ψ0
 end
 
-"""
-    main_Mg_NN_NNN_δ(nx::Int, ny::Int, num_realization::Int, num_δs::Int, χDMRG::Int, R::Float64,
-                     amp_R::Float64, hx::Float64, amp_delta::Float64, path_to_folder::String;
-                     is_sampled=false, num_samples=1000, start_iter=0)
 
-Main function to generate data for nearest-neighbor (NN) and next-nearest-neighbor (NNN) interactions
-with varying transverse field strengths and position disorder.
-
-# Arguments
-- `nx`, `ny`: Dimensions of the lattice
-- `num_realization`: Number of disorder realizations
-- `num_δs`: Number of different transverse field strengths
-- `χDMRG`: Maximum bond dimension for DMRG
-- `R`: Nominal lattice spacing
-- `amp_R`: Amplitude of position disorder
-- `hx`: Central value of transverse field
-- `amp_delta`: Amplitude of transverse field variation
-- `path_to_folder`: Output directory path
-- `is_sampled`: Whether to sample from wavefunctions (default: false)
-- `num_samples`: Number of samples if sampling (default: 1000)
-- `start_iter`: Starting iteration number (default: 0)
-"""
-function main_Mg_NN_NNN_δ(nx::Int,ny::Int, num_realization::Int, num_δs::Int, χDMRG::Int, R::Float64, amp_R::Float64, hx::Float64,
+function main_Mg_NN_NNN_δ(nx::Int, ny::Int, alpha::Float64, num_realization::Int, num_δs::Int, χDMRG::Int, R::Float64, amp_R::Float64, hx::Float64,
     amp_delta::Float64, path_to_folder::String; is_sampled=false, num_samples=1000, start_iter=0)
+    """
+        Main function to generate data for nearest-neighbor (NN) and next-nearest-neighbor (NNN) interactions
+        with varying transverse field strengths and position disorder.
 
+        # Arguments
+        - `nx`, `ny`: Dimensions of the lattice
+        - `num_realization`: Number of disorder realizations
+        - `num_δs`: Number of different transverse field strengths
+        - `χDMRG`: Maximum bond dimension for DMRG
+        - `R`: Nominal lattice spacing
+        - `amp_R`: Amplitude of position disorder
+        - `hx`: Central value of transverse field
+        - `amp_delta`: Amplitude of transverse field variation
+        - `path_to_folder`: Output directory path
+        - `is_sampled`: Whether to sample from wavefunctions (default: false)
+        - `num_samples`: Number of samples if sampling (default: 1000)
+        - `start_iter`: Starting iteration number (default: 0)
+    """
     println("The total number of realizations is $(num_δs*num_realization)!")
 
     # folder_name = "dataset_mps_NNN_PT/" * string(nx) * "x" * string(ny) * "/num_deltas_$(num_δs)"
@@ -231,7 +231,7 @@ function main_Mg_NN_NNN_δ(nx::Int,ny::Int, num_realization::Int, num_δs::Int, 
         )
 
         distances = distances[mask]
-        Jij = C6./(distances.^6)
+        Jij = C6./(distances.^alpha)
 
         # @show distances
         # @show perturbations
@@ -267,25 +267,26 @@ function main_Mg_NN_NNN_δ(nx::Int,ny::Int, num_realization::Int, num_δs::Int, 
                 magnetization_dict = on_site_szs_from_samples(g,samples)
                 nn_correlations_GNN_edges_dict = NN_NNN_szs_from_samples(g,samples,NN_edges,Julia_Python_node_mapping)
                 nnn_correlations_GNN_edges_dict = NN_NNN_szs_from_samples(g,samples,NNN_edges,Julia_Python_node_mapping)
-                magnetization_dict_X = on_site_szs_from_samples(g,samples_X)
-                nn_correlations_GNN_edges_dict_X = NN_NNN_szs_from_samples(g,samples_X,NN_edges,Julia_Python_node_mapping)
-                nnn_correlations_GNN_edges_dict_X = NN_NNN_szs_from_samples(g,samples_X,NNN_edges,Julia_Python_node_mapping)
+                # magnetization_dict_X = on_site_szs_from_samples(g,samples_X)
+                # nn_correlations_GNN_edges_dict_X = NN_NNN_szs_from_samples(g,samples_X,NN_edges,Julia_Python_node_mapping)
+                # nnn_correlations_GNN_edges_dict_X = NN_NNN_szs_from_samples(g,samples_X,NNN_edges,Julia_Python_node_mapping)
             else
                 magnetization_dict = Dict(zip(vertices(g), expect(ψ0, "Z")))
                 nn_correlations_GNN_edges_dict = correlations_GNN_edges(g, ψ0, NN_edges, Julia_Python_node_mapping)
                 nnn_correlations_GNN_edges_dict = correlations_GNN_edges(g, ψ0, NNN_edges, Julia_Python_node_mapping)
-                magnetization_dict_X = Dict(zip(vertices(g), expect(ψ0, "X")))
-                nn_correlations_GNN_edges_dict_X = correlations_GNN_edges_X(g, ψ0, NN_edges, Julia_Python_node_mapping)
-                nnn_correlations_GNN_edges_dict_X = correlations_GNN_edges_X(g, ψ0, NNN_edges, Julia_Python_node_mapping)
+                # magnetization_dict_X = Dict(zip(vertices(g), expect(ψ0, "X")))
+                # nn_correlations_GNN_edges_dict_X = correlations_GNN_edges_X(g, ψ0, NN_edges, Julia_Python_node_mapping)
+                # nnn_correlations_GNN_edges_dict_X = correlations_GNN_edges_X(g, ψ0, NNN_edges, Julia_Python_node_mapping)
             end
             @show nn_correlations_GNN_edges_dict
         
             Mg = [magnetization_dict[Julia_Python_node_mapping[node]] for node in nodes]
             NN_corrs_GNN = [nn_correlations_GNN_edges_dict[NN_edge] for NN_edge in NN_edges]
             NNN_corrs_GNN = [nnn_correlations_GNN_edges_dict[NNN_edge] for NNN_edge in NNN_edges]
-            Mg_X = [magnetization_dict_X[Julia_Python_node_mapping[node]] for node in nodes]
-            NN_corrs_GNN_X = [nn_correlations_GNN_edges_dict_X[NN_edge] for NN_edge in NN_edges]
-            NNN_corrs_GNN_X = [nnn_correlations_GNN_edges_dict_X[NNN_edge] for NNN_edge in NNN_edges]
+            
+            # Mg_X = [magnetization_dict_X[Julia_Python_node_mapping[node]] for node in nodes]
+            # NN_corrs_GNN_X = [nn_correlations_GNN_edges_dict_X[NN_edge] for NN_edge in NN_edges]
+            # NNN_corrs_GNN_X = [nnn_correlations_GNN_edges_dict_X[NNN_edge] for NNN_edge in NNN_edges]
         
             npzwrite(folder_name * "/Rs_$(realization+δ_snapshot+largest_int).npy", δRs_GNN)
             npzwrite(folder_name * "/Rps_$(realization+δ_snapshot+largest_int).npy", δRps_GNN)
@@ -293,39 +294,34 @@ function main_Mg_NN_NNN_δ(nx::Int,ny::Int, num_realization::Int, num_δs::Int, 
             npzwrite(folder_name * "/Jpzzs_$(realization+δ_snapshot+largest_int).npy", Jpzzs_GNN)
             npzwrite(folder_name * "/hxs_$(realization+δ_snapshot+largest_int).npy", hxs)
             npzwrite(folder_name * "/Mg_$(realization+δ_snapshot+largest_int).npy", Mg)
-            npzwrite(folder_name * "/Mg_X_$(realization+δ_snapshot+largest_int).npy", Mg_X)
             npzwrite(folder_name * "/NN_corrs_$(realization+δ_snapshot+largest_int).npy", NN_corrs_GNN)
             npzwrite(folder_name * "/NNN_corrs_$(realization+δ_snapshot+largest_int).npy", NNN_corrs_GNN)
-            npzwrite(folder_name * "/NN_corrs_X_$(realization+δ_snapshot+largest_int).npy", NN_corrs_GNN_X)
-            npzwrite(folder_name * "/NNN_corrs_X_$(realization+δ_snapshot+largest_int).npy", NNN_corrs_GNN_X)
+            # npzwrite(folder_name * "/Mg_X_$(realization+δ_snapshot+largest_int).npy", Mg_X)
+            # npzwrite(folder_name * "/NN_corrs_X_$(realization+δ_snapshot+largest_int).npy", NN_corrs_GNN_X)
+            # npzwrite(folder_name * "/NNN_corrs_X_$(realization+δ_snapshot+largest_int).npy", NNN_corrs_GNN_X)
         end
     end      
 end
 
 
-"""
-    main_Mg_NN_NNN_δ_smpl(nx::Int, ny::Int, num_δs::Int, χDMRG::Int, R::Float64,
-                          amp_R::Float64, hx::Float64, amp_delta::Float64, path_to_folder::String;
-                          num_samples=1000, start_iter=0)
-
-Similar to main_Mg_NN_NNN_δ but specifically for generating sampled measurements from wavefunctions.
-This version uses a single disorder realization but generates multiple samples for each transverse field value.
-
-# Arguments
-- `nx`, `ny`: Dimensions of the lattice
-- `num_δs`: Number of different transverse field strengths
-- `χDMRG`: Maximum bond dimension for DMRG
-- `R`: Nominal lattice spacing
-- `amp_R`: Amplitude of position disorder
-- `hx`: Central value of transverse field
-- `amp_delta`: Amplitude of transverse field variation
-- `path_to_folder`: Output directory path
-- `num_samples`: Number of samples per configuration (default: 1000)
-- `start_iter`: Starting iteration number (default: 0)
-"""
 function main_Mg_NN_NNN_δ_smpl(nx::Int,ny::Int,num_δs::Int,χDMRG::Int,R::Float64,amp_R::Float64,hx::Float64,
     amp_delta::Float64,path_to_folder::String;num_samples=1000,start_iter=0)
+    """
+    Similar to main_Mg_NN_NNN_δ but specifically for generating sampled measurements from wavefunctions.
+    This version uses a single disorder realization but generates multiple samples for each transverse field value.
 
+    # Arguments
+    - `nx`, `ny`: Dimensions of the lattice
+    - `num_δs`: Number of different transverse field strengths
+    - `χDMRG`: Maximum bond dimension for DMRG
+    - `R`: Nominal lattice spacing
+    - `amp_R`: Amplitude of position disorder
+    - `hx`: Central value of transverse field
+    - `amp_delta`: Amplitude of transverse field variation
+    - `path_to_folder`: Output directory path
+    - `num_samples`: Number of samples per configuration (default: 1000)
+    - `start_iter`: Starting iteration number (default: 0)
+    """
     # folder_name = "dataset_mps_NNN_PT/" * string(nx) * "x" * string(ny) * "/num_deltas_$(num_δs)"
     folder_name_clstr_size = path_to_folder * "/" * string(nx) * "x" * string(ny)
     folder_name = folder_name_clstr_size * "/num_deltas_$(num_δs)"
@@ -454,50 +450,50 @@ function main_Mg_NN_NNN_δ_smpl(nx::Int,ny::Int,num_δs::Int,χDMRG::Int,R::Floa
         magnetization_dict = Dict(zip(vertices(g), expect(ψ0, "Z")))
         nn_correlations_GNN_edges_dict = correlations_GNN_edges(g, ψ0, NN_edges, Julia_Python_node_mapping)
         nnn_correlations_GNN_edges_dict = correlations_GNN_edges(g, ψ0, NNN_edges, Julia_Python_node_mapping)
-        magnetization_dict_X = Dict(zip(vertices(g), expect(ψ0, "X")))
-        nn_correlations_GNN_edges_dict_X = correlations_GNN_edges_X(g, ψ0, NN_edges, Julia_Python_node_mapping)
-        nnn_correlations_GNN_edges_dict_X = correlations_GNN_edges_X(g, ψ0, NNN_edges, Julia_Python_node_mapping)
+        # magnetization_dict_X = Dict(zip(vertices(g), expect(ψ0, "X")))
+        # nn_correlations_GNN_edges_dict_X = correlations_GNN_edges_X(g, ψ0, NN_edges, Julia_Python_node_mapping)
+        # nnn_correlations_GNN_edges_dict_X = correlations_GNN_edges_X(g, ψ0, NNN_edges, Julia_Python_node_mapping)
 
         Mg = [magnetization_dict[Julia_Python_node_mapping[node]] for node in nodes]
         NN_corrs_GNN = [nn_correlations_GNN_edges_dict[NN_edge] for NN_edge in NN_edges]
         NNN_corrs_GNN = [nnn_correlations_GNN_edges_dict[NNN_edge] for NNN_edge in NNN_edges]
-        Mg_X = [magnetization_dict_X[Julia_Python_node_mapping[node]] for node in nodes]
-        NN_corrs_GNN_X = [nn_correlations_GNN_edges_dict_X[NN_edge] for NN_edge in NN_edges]
-        NNN_corrs_GNN_X = [nnn_correlations_GNN_edges_dict_X[NNN_edge] for NNN_edge in NNN_edges]
+        # Mg_X = [magnetization_dict_X[Julia_Python_node_mapping[node]] for node in nodes]
+        # NN_corrs_GNN_X = [nn_correlations_GNN_edges_dict_X[NN_edge] for NN_edge in NN_edges]
+        # NNN_corrs_GNN_X = [nnn_correlations_GNN_edges_dict_X[NNN_edge] for NNN_edge in NNN_edges]
 
         npzwrite(folder_name * "/Mg_Exact_$(δ_snapshot+largest_int).npy", Mg)
-        npzwrite(folder_name * "/Mg_X_Exact_$(δ_snapshot+largest_int).npy", Mg_X)
         npzwrite(folder_name * "/NN_corrs_Exact_$(δ_snapshot+largest_int).npy", NN_corrs_GNN)
         npzwrite(folder_name * "/NNN_corrs_Exact_$(δ_snapshot+largest_int).npy", NNN_corrs_GNN)
-        npzwrite(folder_name * "/NN_corrs_X_Exact_$(δ_snapshot+largest_int).npy", NN_corrs_GNN_X)
-        npzwrite(folder_name * "/NNN_corrs_X_Exact_$(δ_snapshot+largest_int).npy", NNN_corrs_GNN_X)
+        # npzwrite(folder_name * "/Mg_X_Exact_$(δ_snapshot+largest_int).npy", Mg_X)
+        # npzwrite(folder_name * "/NN_corrs_X_Exact_$(δ_snapshot+largest_int).npy", NN_corrs_GNN_X)
+        # npzwrite(folder_name * "/NNN_corrs_X_Exact_$(δ_snapshot+largest_int).npy", NNN_corrs_GNN_X)
         
         for smpl in 0:num_samples-1
 
             ψ0_smpl = ITensors.sample(ψ0)
-            ψ0_X_smpl = ITensors.sample(ψ0_X)
+            # ψ0_X_smpl = ITensors.sample(ψ0_X)
         
             magnetization_dict = on_site_szs_per_samples(g,ψ0_smpl)
             nn_correlations_GNN_edges_dict = NN_NNN_szs_per_samples(g,ψ0_smpl,NN_edges,Julia_Python_node_mapping)
             nnn_correlations_GNN_edges_dict = NN_NNN_szs_per_samples(g,ψ0_smpl,NNN_edges,Julia_Python_node_mapping)
-            magnetization_dict_X = on_site_szs_per_samples(g,ψ0_X_smpl)
-            nn_correlations_GNN_edges_dict_X = NN_NNN_szs_per_samples(g,ψ0_X_smpl,NN_edges,Julia_Python_node_mapping)
-            nnn_correlations_GNN_edges_dict_X = NN_NNN_szs_per_samples(g,ψ0_X_smpl,NNN_edges,Julia_Python_node_mapping)
+            # magnetization_dict_X = on_site_szs_per_samples(g,ψ0_X_smpl)
+            # nn_correlations_GNN_edges_dict_X = NN_NNN_szs_per_samples(g,ψ0_X_smpl,NN_edges,Julia_Python_node_mapping)
+            # nnn_correlations_GNN_edges_dict_X = NN_NNN_szs_per_samples(g,ψ0_X_smpl,NNN_edges,Julia_Python_node_mapping)
         
             Mg = [magnetization_dict[Julia_Python_node_mapping[node]] for node in nodes]
             NN_corrs_GNN = [nn_correlations_GNN_edges_dict[NN_edge] for NN_edge in NN_edges]
             NNN_corrs_GNN = [nnn_correlations_GNN_edges_dict[NNN_edge] for NNN_edge in NNN_edges]
-            Mg_X = [magnetization_dict_X[Julia_Python_node_mapping[node]] for node in nodes]
-            NN_corrs_GNN_X = [nn_correlations_GNN_edges_dict_X[NN_edge] for NN_edge in NN_edges]
-            NNN_corrs_GNN_X = [nnn_correlations_GNN_edges_dict_X[NNN_edge] for NNN_edge in NNN_edges]
+            # Mg_X = [magnetization_dict_X[Julia_Python_node_mapping[node]] for node in nodes]
+            # NN_corrs_GNN_X = [nn_correlations_GNN_edges_dict_X[NN_edge] for NN_edge in NN_edges]
+            # NNN_corrs_GNN_X = [nnn_correlations_GNN_edges_dict_X[NNN_edge] for NNN_edge in NNN_edges]
         
             npzwrite(folder_name * "/hxs_$(smpl+δ_snapshot+largest_int).npy", hxs)
             npzwrite(folder_name * "/Mg_$(smpl+δ_snapshot+largest_int).npy", Mg)
-            npzwrite(folder_name * "/Mg_X_$(smpl+δ_snapshot+largest_int).npy", Mg_X)
             npzwrite(folder_name * "/NN_corrs_$(smpl+δ_snapshot+largest_int).npy", NN_corrs_GNN)
             npzwrite(folder_name * "/NNN_corrs_$(smpl+δ_snapshot+largest_int).npy", NNN_corrs_GNN)
-            npzwrite(folder_name * "/NN_corrs_X_$(smpl+δ_snapshot+largest_int).npy", NN_corrs_GNN_X)
-            npzwrite(folder_name * "/NNN_corrs_X_$(smpl+δ_snapshot+largest_int).npy", NNN_corrs_GNN_X)
+            # npzwrite(folder_name * "/Mg_X_$(smpl+δ_snapshot+largest_int).npy", Mg_X)
+            # npzwrite(folder_name * "/NN_corrs_X_$(smpl+δ_snapshot+largest_int).npy", NN_corrs_GNN_X)
+            # npzwrite(folder_name * "/NNN_corrs_X_$(smpl+δ_snapshot+largest_int).npy", NNN_corrs_GNN_X)
 
         end
     end      
