@@ -48,6 +48,7 @@ def load_plot_parameters(json_file: str) -> Tuple[Dict[str, Any], str]:
         'init_state': params['physics']['init_state'],
         'init_linkdims': params['physics']['init_linkdims'],
         'deltas': params['deltas'],
+        'folder': params['output']['folder'],
         'output_folder': get_output_path(params['output']['folder'], params['lattice']['alpha'])
     }
 
@@ -60,7 +61,7 @@ def load_plot_parameters(json_file: str) -> Tuple[Dict[str, Any], str]:
 def main():
     parser = argparse.ArgumentParser(description='Plot error vs bond dimension for TFIM')
     parser.add_argument('--type', type=int, required=True,
-                      help='Type of plot: 0: error_vs_bond_dim, 1: staggered_magnetization, 2: FM_and_AFM_error_vs_bond_dim')
+                      help='Type of plot: 0: error_vs_bond_dim, 1: staggered_magnetization, 2: FM_and_AFM_error_vs_bond_dim, 3: time_vs_bond_dim_single_alpha')
     parser.add_argument('--params', type=str, default='benchmark_parameters.json',
                       help='Path to the JSON file containing benchmark parameters')
     parser.add_argument('--vs', type=str, default="max_trunc_err",
@@ -98,30 +99,30 @@ def main():
             optimal_bond_dim = int(input())
 
         # Step 3: Plot magnetization phase diagram
-        pbu.plot_magnetization_phase_diagram(nx, ny, output_folder, optimal_bond_dim, save_fig=True,
+        pbu.plot_magnetization_phase_diagram(nx, ny, R, amp_R, alpha, output_folder, optimal_bond_dim, save_fig=True,
                                         physics_params={'C6': C6, 'alpha': alpha, 'R': R, 'amp_R': amp_R},
                                         init_state=init_state, init_linkdims=init_linkdims)
     elif args.type == 1:
-        nx, ny = 5, 5
+        nx, ny = 9,9
         R = 1.0
-        amp_R = 0.0
+        amp_R = 0.02    
         C6 = 1.0
         init_state = "FM"
         init_linkdims = 100
-        optimal_bond_dim = 80
-        folder = "./Benchmark-normalized/"
+        optimal_bond_dim = 160
+        folder = "./Benchmark-9x9/" # ./Benchmark-9x9/ ./Benchmark-normalized/
 
-        pbu.plot_phase_diagram_all_alpha(nx, ny, folder, optimal_bond_dim, save_fig=True,
+        pbu.plot_phase_diagram_all_alpha(nx, ny, R, amp_R, folder, optimal_bond_dim, save_fig=True,
                                        physics_params={'C6': C6, 'R': R, 'amp_R': amp_R},
                                        init_state=init_state, init_linkdims=init_linkdims)
         
     elif args.type == 2:
-        nx, ny = 5, 5
+        nx, ny = 9,9
         R = 1.0
         amp_R = 0.02
         C6 = 1.0
         init_linkdims = 100
-        folder = "./Benchmark-normalized/"
+        folder = "./Benchmark-9x9/"
         
         print(f"Provide alpha for the plot (1, 2, 3, 6): ")
         alpha = int(input())
@@ -140,9 +141,27 @@ def main():
         pbu.plot_FM_and_AFM_error_vs_bond_dim(args.vs, nx, ny, folder, deltas=deltas, save_fig=True,
                                        physics_params={'C6': C6, 'alpha': alpha, 'R': R, 'amp_R': amp_R},
                                        init_linkdims=init_linkdims)
+    elif args.type == 3:
+        plot_params, output_folder, _, _, _ = load_plot_parameters(args.params)
+        nx, ny = plot_params['nx'], plot_params['ny']
+        R = plot_params['R']
+        amp_R = plot_params['amp_R']
+        C6 = plot_params['C6']
+        init_state = plot_params.get('init_state', 'FM')
+        init_linkdims = plot_params.get('init_linkdims', 100)
+        alpha = plot_params['alpha']
+        
+        # Use output_folder which already includes alpha_* and add the size folder
+        path_to_folder = os.path.join(output_folder, f"{nx}x{ny}")
+        print(f"Plotting DMRG time vs bond dimension for alpha={alpha} in: {path_to_folder}")
+        pbu.plot_time_vs_bond_dim(
+            nx, ny, R, amp_R, alpha, path_to_folder,
+            init_state=init_state, init_linkdims=init_linkdims, save_fig=True,
+            physics_params={'C6': C6, 'alpha': alpha, 'R': R, 'amp_R': amp_R}
+        )
     else:
         args.print_help()
-        raise ValueError(f"Invalid plot type: {args.type}. Please choose 0, 1, or 2.")
+        raise ValueError(f"Invalid plot type: {args.type}. Please choose 0, 1, 2, 3, or 4.")
 
 if __name__ == "__main__":
     main()
