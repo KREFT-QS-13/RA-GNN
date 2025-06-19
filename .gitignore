@@ -22,6 +22,8 @@ code-RA-GNN-workspace.code-workspace
 
 data-gen/SLURM_jobs/*
 
+data-gen/params/*
+
 GNN/Results/*
 GNN/__pycache__/*
 GNN/Figs/train/*
