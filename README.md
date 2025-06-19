@@ -4,6 +4,14 @@ All work done in this project relates to the following paper: [Learning interact
 
 Supervisor: **Anna Dawid**
 
+### Cloning and launching code
+```git clone https://github.com/KREFT-QS-13/RA-GNN.git
+```
+
+```julia --project=. -e 'using Pkg; Pkg.resolve(); Pkg.instantiate(); Pkg.precompile()'
+```
+
+
 ### Benchmark
 - Folder *Benchmark* contains the experiments tracking the error and max truncation error vs the bond dimension for different values of $`\delta`$
 - Folder *Benchmark-v2* contains the same experiments, but the sweep scheduling of bond dimension is the same as in the original code (it starts with small values, then grows to the set limit.)
