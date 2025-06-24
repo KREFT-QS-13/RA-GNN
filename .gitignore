@@ -24,6 +24,7 @@ data-gen/[0-9]x[0-9]/*
 code-RA-GNN-workspace.code-workspace
 
 data-gen/SLURM_jobs/*
+data-gen/SLURM_jobs
 
 data-gen/params/
 data-gen/params/*
