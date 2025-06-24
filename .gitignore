@@ -1,6 +1,8 @@
 testing/
 
 data-gen/Datasets/*
+data-gen/Datasets_test
+data-gen/Datasets_test/*
 
 data-gen/Experiment_1/*
 # data-gen/Benchmark/*

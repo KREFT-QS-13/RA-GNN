@@ -171,13 +171,14 @@ function main_Mg_NN_NNN_δ(nx::Int, ny::Int, alpha::Int, num_realization::Int, n
     Julia_Python_node_mapping = Dict(zip(nodes, vertices(g)))
     @show Julia_Python_node_mapping
     
-    if alpha == 6
-        hxs_grid = collect(range(hx-amp_delta,stop=hx+amp_delta,length=num_δs))
-    else
-        hxs_grid = filter(x -> x > 0, collect(range(hx-amp_delta,stop=hx+amp_delta,length=num_δs)))
-        @assert(length(hxs_grid) == num_δs, "They dont match: num_δs = $num_δs, hxs_grid = $(length(hxs_grid)). \n For alpha!=6, we only consider positive hxs.")
-    end
+    hxs_grid = collect(range(hx-amp_delta,stop=hx+amp_delta,length=10))
     @show hxs_grid
+    if alpha != 6
+        hxs_grid = filter(x -> x > 0, hxs_grid)
+        println("After filtering:")
+        @show hxs_grid
+    end
+    @assert(length(hxs_grid) == num_δs, "They dont match: num_δs = $num_δs, hxs_grid = $(length(hxs_grid)). \n For alpha!=6, we only consider positive hxs.")
     num_vertices = length(vertices(g))
 
     nominal_values = Array{Tuple{Float64,Float64},2}([(i*R, j*R) for i in 0:nx-1, j in 0:ny-1])
